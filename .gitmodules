@@ -1,0 +1,3 @@
+[submodule "StackStruct"]
+	path = StackStruct
+	url = https://github.com/Kunakbaev/StackStruct
