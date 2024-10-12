@@ -14,11 +14,8 @@ CFLAGS = -D _DEBUG
 
 # ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR         := source
-LIB_RUN_NAME       := SPUproject
+LIB_RUN_NAME       := assembler
 BUILD_DIR          := building
-STACK_LIB_DIR	   := ./StackStruct
-STACK_TARGET_NAME  := stackStructLib
-STACK_BUILDING_DIR := $(STACK_LIB_DIR)/building
 # LOG_LIB_DIR       := LoggerLib/source
 
 ifeq ($(DEBUG), 0)
@@ -35,16 +32,10 @@ SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
-# .INCLUDEDIRS : ./StackStruct/source
-include ./StackStruct/Makefile
-
-$(STACK_TARGET_NAME):
-	# make -C ./StackStruct/
-
-
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
+	ehco $(OBJ)
 	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) $(CFLAGS)
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
