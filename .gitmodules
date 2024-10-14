@@ -4,3 +4,6 @@
 [submodule "external/LoggerLib"]
 	path = external/LoggerLib
 	url = https://github.com/Kunakbaev/LoggerLib
+[submodule "external/--force"]
+	path = external/--force
+	url = https://github.com/Kunakbaev/StackStruct
