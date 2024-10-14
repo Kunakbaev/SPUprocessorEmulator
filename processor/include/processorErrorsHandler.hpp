@@ -3,9 +3,6 @@
 
 #include "../../common/include/errorsHandlerDefines.hpp"
 
-#define IF_PROCESSOR_ARG_NULL_RETURN(arg) \
-    COMMON_IF_ARG_NULL_RETURN(arg, PROCESSOR_ERROR_INVALID_ARGUMENT)
-
 enum ProcessorErrors {
     PROCESSOR_STATUS_OK                                   = 0,                  // no error, everything is valid
     PROCESSOR_ERROR_INVALID_ARGUMENT                      = 1,                  // usually when argument is set to NULL
@@ -17,6 +14,6 @@ enum ProcessorErrors {
     PROCESSOR_ERROR_COMMANDS_ERROR                        = 7,
 };
 
-const char* getErrorMessage(ProcessorErrors error);
+const char* getProcessorErrorMessage(ProcessorErrors error);
 
 #endif

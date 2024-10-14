@@ -1,12 +1,20 @@
 #include <iostream>
 
-#include "../include/processor.hpp"
+//#include "../include/processor.hpp"
+//#include "../../external/LoggerLib/include/logLib.hpp"
+#include "logLib.hpp"
+#include "stackLib.hpp"
 
 int main() {
     setLoggingLevel(DEBUG);
-    LOG_DEBUG("Compiling program (transfer between 'assebmler' code and 'binary'!\n");
+    printf("bruh\n");
+    LOG_DEBUG("Compiling program (transfer between 'compiler' code and 'working program'!\n");
 
-    Processor processor = {};
-    ProcessorErrors error = ProcessorConstructor(&processor);
-    IF_ERR_RETURN(error);
+    Stack stack = {};
+    constructStack(&stack, 0, 4);
+    int x = 10;
+    pushElementToStack(&stack, &x);
+
+    // Processor processor = {};
+    // ProcessorErrors error = ProcessorConstructor(&processor);
 }

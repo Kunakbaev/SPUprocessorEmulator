@@ -32,14 +32,14 @@ endif
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
-STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
 # CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
+CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/include
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ) $(BUILD_DIR)
-	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) $(CFLAGS)
+	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L../external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)

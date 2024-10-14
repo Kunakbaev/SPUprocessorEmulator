@@ -1,6 +1,6 @@
 #include "../include/assemblerErrorsHandler.hpp"
 
-const char* getErrorMessage(AssemblerErrors error) {
+const char* getAssemblerErrorMessage(AssemblerErrors error) {
     switch (error) {
         //  -------------------   GENERAL ERRORS    ---------------------------
         case ASSEMBLER_STATUS_OK:

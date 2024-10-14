@@ -1,7 +1,7 @@
 #include <iostream>
 
 // #include "../StackStruct/LoggerLib/include/logLib.hpp"
-// #include "../include/assembly.hpp"
+#include "../include/assembly.hpp"
 // #include "../../external/LoggerLib/loglib.so"
 // #include "../../external/LoggerLib/include/logLib.hpp"
 #include "logLib.hpp"
@@ -17,4 +17,6 @@ int main() {
     setLoggingLevel(DEBUG);
     printf("I am bruh from assembler main\n");
     LOG_DEBUG("Compiling program (transfer between 'assebmler' code and 'binary'!\n");
+
+    AssemblerErrors error = compileProgram("../program.asm", "programBinCode.txt");
 }

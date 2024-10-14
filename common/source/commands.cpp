@@ -7,6 +7,12 @@
 //     {"push", pushElementToCalculator},
 // };
 
+#define IF_ARG_NULL_RETURN(arg) \
+    COMMON_IF_ARG_NULL_RETURN(arg, COMMANDS_ERROR_INVALID_ARGUMENT, getCommandsErrorMessage)
+
+#define IF_NOT_COND_RETURN(condition, error) \
+    COMMON_IF_NOT_COND_RETURN(condition, error, getCommandsErrorMessage)
+
 constexpr CommandStruct COMMANDS[] = {
     {1, "push", pushElementToCalculator},
     {1, "push", pushElementToCalculator},
@@ -21,7 +27,7 @@ const size_t NUM_OF_COMMANDS = sizeof(COMMANDS) / sizeof(*COMMANDS); // ????????
 //
 // }
 
-const char* getErrorMessage(CommandErrors error) {
+const char* getCommandsErrorMessage(CommandErrors error) {
     switch (error) {
         //  -------------------   GENERAL ERRORS    ---------------------------
         case COMMANDS_STATUS_OK:

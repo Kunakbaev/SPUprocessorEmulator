@@ -8,9 +8,6 @@
 // ASK: this define gets redefined in each header, how to solve it?
 // maybe name define with additional name of module to which it belongs
 
-#define IF_ARG_NULL_RETURN(arg) \
-    COMMON_IF_ARG_NULL_RETURN(arg, COMMANDS_ERROR_INVALID_ARGUMENT)
-
 struct CommandStruct {
     size_t commandIndex; // ASK: cringe?
     const char* commandName;
@@ -41,6 +38,6 @@ enum CommandErrors {
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result);
 
-const char* getErrorMessage(ProcessorErrors error);
+const char* getCommandsErrorMessage(CommandErrors error);
 
 #endif

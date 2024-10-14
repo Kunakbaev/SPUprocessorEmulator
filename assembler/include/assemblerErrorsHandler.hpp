@@ -4,9 +4,6 @@
 #include "../../common/include/commands.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
 
-#define IF_ARG_NULL_RETURN(arg) \
-    COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT)
-
 // ASK: how to rewrite this enum, so errors are distributed among modules
 enum AssemblerErrors {
     //  --------------------------      GENERAL ERRORS          -----------------------------
@@ -15,8 +12,9 @@ enum AssemblerErrors {
     ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR               = 2,                  // usually when memory allocation by calloc fails
     ASSEMBLER_ERROR_MEMORY_REALLOCATION_ERROR             = 3,                  // couldn't reallocate memory
     ASSEMBLER_ERROR_COULDNT_OPEN_FILE                     = 4,
+    ASSEMBLER_ERROR_COMMAND_ERROR                         = 5,
 };
 
-const char* getErrorMessage(AssemblerErrors error);
+const char* getAssemblerErrorMessage(AssemblerErrors error);
 
 #endif

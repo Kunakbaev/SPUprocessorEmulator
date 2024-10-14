@@ -4,6 +4,21 @@
 #include "../include/assembly.hpp"
 #include "../../common/include/commands.hpp"
 
+
+
+
+#define IF_ARG_NULL_RETURN(arg) \
+    COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT, getAssemblerErrorMessage)
+
+#define IF_ERR_RETURN(error) \
+    COMMON_IF_ERR_RETURN(error, getAssemblerErrorMessage)
+
+#define IF_NOT_COND_RETURN(condition, error) \
+    COMMON_IF_NOT_COND_RETURN(condition, error, getAssemblerErrorMessage)
+
+
+
+
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
@@ -27,7 +42,11 @@ static AssemblerErrors readCommandsFromFileToArray(FILE* source, FILE* dest) {
 
         int num = 0;
         if (isLineCommand(fileLineBuffer)) {
-            Errors error = getCommandByName(fileLineBuffer, &command); // ???
+            CommandErrors error = getCommandByName(fileLineBuffer, &command); // ???
+            if (error != COMMANDS_STATUS_OK) {
+                LOG_ERROR(getCommandsErrorMessage(error));
+                return ASSEMBLER_ERROR_COMMAND_ERROR;
+            }
         } else {
             num = atoi(fileLineBuffer);
         }
@@ -56,7 +75,7 @@ AssemblerErrors compileProgram(const char* sourceFileName,
     return ASSEMBLER_STATUS_OK;
 }
 
-Errors destructAssembler() {
+AssemblerErrors destructAssembler() {
     FREE(fileLineBuffer);
-    return STATUS_OK;
+    return ASSEMBLER_STATUS_OK;
 }

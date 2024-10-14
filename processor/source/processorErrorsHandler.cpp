@@ -1,6 +1,6 @@
 #include "../include/processorErrorsHandler.hpp"
 
-const char* getErrorMessage(ProcessorErrors error) {
+const char* getProcessorErrorMessage(ProcessorErrors error) {
     switch (error) {
         //  -------------------   GENERAL ERRORS    ---------------------------
         case PROCESSOR_STATUS_OK:

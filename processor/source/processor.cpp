@@ -3,13 +3,28 @@
 #include "../../common/include/commands.hpp"
 #include "../include/processor.hpp"
 
+
+// ASK: is this good solution?
+
+#define IF_ARG_NULL_RETURN(arg) \
+    COMMON_IF_ARG_NULL_RETURN(arg, PROCESSOR_ERROR_INVALID_ARGUMENT, getProcessorErrorMessage)
+
+#define IF_ERR_RETURN(error) \
+    COMMON_IF_ERR_RETURN(error, getProcessorErrorMessage)
+
+#define IF_NOT_COND_RETURN(condition, error) \
+    COMMON_IF_NOT_COND_RETURN(condition, error, getProcessorErrorMessage)
+
+
+
+
 const size_t MAX_PROGRAM_CODE_SIZE = 1 << 10;
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
 ProcessorErrors ProcessorConstructor(Processor* processor) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor);
 
     *processor = {};
     constructStack(&processor->stack, 0, PROCESSOR_DATA_TYPE_SIZE);
@@ -25,8 +40,8 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
 }
 
 static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
-    IF_PROCESSOR_ARG_NULL_RETURN(file);
-    IF_PROCESSOR_ARG_NULL_RETURN(numOfLines);
+    IF_ARG_NULL_RETURN(file);
+    IF_ARG_NULL_RETURN(numOfLines);
 
     *numOfLines = 0;
     const char CH_TO_COUNT = '\n';
@@ -42,8 +57,8 @@ static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
 }
 
 static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfLines) {
-    IF_PROCESSOR_ARG_NULL_RETURN(array);
-    IF_PROCESSOR_ARG_NULL_RETURN(file);
+    IF_ARG_NULL_RETURN(array);
+    IF_ARG_NULL_RETURN(file);
 
     int lineIndex = 0;
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
@@ -56,8 +71,8 @@ static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, i
 }
 
 ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
-    IF_PROCESSOR_ARG_NULL_RETURN(binFileName);
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(binFileName);
 
     FILE* binaryFile = fopen(binFileName, "r");
     IF_NOT_COND_RETURN(binaryFile != NULL,
@@ -83,7 +98,7 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
 */
 
 ProcessorErrors pushElementToCalculator(Processor* processor) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor);
     IF_NOT_COND_RETURN(processor->instructionPointer + 1 < processor->numberOfInstructions,
                        PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
 
@@ -128,7 +143,7 @@ processor_data_type div2Nums(processor_data_type a, processor_data_type b) {
 typedef processor_data_type (*twoArgsOperationFuncPtr)(processor_data_type a, processor_data_type b);
 
 ProcessorErrors doOperationWith2Args(Processor* processor, twoArgsOperationFuncPtr operation) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor);
     IF_NOT_COND_RETURN(processor->instructionPointer + 2 < processor->numberOfInstructions,
                        PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
 
@@ -150,7 +165,7 @@ ProcessorErrors doOperationWith2Args(Processor* processor, twoArgsOperationFuncP
 }
 
 ProcessorErrors runProgramBinary(Processor* processor) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor);
 
     processor->instructionPointer = 0;
     for (; processor->instructionPointer < processor->numberOfInstructions; ++processor->instructionPointer) {
@@ -162,7 +177,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
         CommandErrors error = getCommandByIndex(commandIndex, &command);
         if (error != COMMANDS_STATUS_OK) {
             // FIXME: probably overload happens and that's not function that we are looking for
-            LOG_ERROR(getErrorMessage(error));
+            LOG_ERROR(getCommandsErrorMessage(error));
             return PROCESSOR_ERROR_COMMANDS_ERROR;
         }
 
@@ -184,7 +199,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
 }
 
 ProcessorErrors ProcessorDestructor(Processor* processor) {
-    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor);
 
     Errors error = destructStack(&processor->stack);
     if (error != STATUS_OK) {
