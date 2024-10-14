@@ -1,7 +1,7 @@
 #ifndef COMMON_ERRORS_HANDLER_DEFINES_HPP
 #define COMMON_ERRORS_HANDLER_DEFINES_HPP
 
-#include "utils.cpp"
+#include "utils.hpp"
 
 // log and return happens only if error realy occured (error != STATUS_OK)
 #define IF_ERR_RETURN(error)                                        \
@@ -24,12 +24,12 @@
     } while(0)
 
 // ASK: should I create tmp variable for this case too?
-#define IF_ARG_NULL_RETURN(arg)                                     \
+#define COMMON_IF_ARG_NULL_RETURN(arg, error)                       \
     do {                                                            \
         if (arg == NULL) {                                          \
-            LOG_ERROR(getErrorMessage(ERROR_INVALID_ARGUMENT));     \
+            LOG_ERROR(getErrorMessage(error));                      \
             assert(arg != NULL);                                    \
-            return ERROR_INVALID_ARGUMENT;                          \
+            return error;                                           \
         }                                                           \
     } while (0)
 

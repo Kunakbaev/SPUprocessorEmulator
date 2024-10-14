@@ -5,21 +5,9 @@ CFLAGS = -D _DEBUG
 # CFLAGS += -D NDEBUG
 # CFLAGS += -fsanitize=address
 
-# [[fallthrough]]
-
-# 1) libRun -> variable; testRun -> variable
-# 2) build directory -> variable, -o flags for each compilation
-# 3) @> @^ @< $<
-# 4) PHONY - что делает
-
-# ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR         := source
 LIB_RUN_NAME       := SPUproject
 BUILD_DIR          := building
-STACK_LIB_DIR	   := ./StackStruct
-STACK_TARGET_NAME  := stackStructLib
-STACK_BUILDING_DIR := $(STACK_LIB_DIR)/building
-# LOG_LIB_DIR       := LoggerLib/source
 
 ifeq ($(DEBUG), 0)
 	ASSERT_DEFINE = -DNDEBUG
@@ -31,36 +19,21 @@ endif
 
 # LOGGER_SRC 			:= $(LOG_LIB_DIR)/colourfullPrint.cpp $(LOG_LIB_DIR)/debugMacros.cpp $(LOG_LIB_DIR)/logLib.cpp
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
-SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
+SRC 	   				:= common/source/commands.cpp
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
-STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
-# .INCLUDEDIRS : ./StackStruct/source
-include ./StackStruct/Makefile
-
-$(STACK_TARGET_NAME):
-	# make -C ./StackStruct/
-
-
+processor:
+	make -C ./processor
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
-	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) $(CFLAGS)
-#
-# $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
-# 	@$(CC) -c $< $(LOGGER_FLAGS) -o $@ $(ASSERT_DEFINE)
-#
-$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
+	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -lmy_loglib $(CFLAGS) -I processor/include/
+
+$(BUILD_DIR)/%.o: common/source/%.cpp $(BUILD_DIR)
 	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
-# run: $(LIB_RUN_NAME)
-# 	@$(BUILD_DIR)/$(LIB_RUN_NAME)
-
-# $(LIB_RUN_NAME):
-# 	echo bruh
-
-run: $(LIB_RUN_NAME)
-
+run: $(LIB_RUN_NAME) processor
+	./buidling/$(LIB_RUN_NAME)
 
 
 # -------------------------   HELPER TARGETS   ---------------------------

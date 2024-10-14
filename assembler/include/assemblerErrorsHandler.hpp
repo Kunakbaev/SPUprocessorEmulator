@@ -2,6 +2,10 @@
 #define ASSEMBLER_INCLUDE_ASSEMBLER_ERRORS_HANDLER_HPP
 
 #include "../../common/include/commands.hpp"
+#include "../../common/include/errorsHandlerDefines.hpp"
+
+#define IF_ARG_NULL_RETURN(arg) \
+    COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT)
 
 // ASK: how to rewrite this enum, so errors are distributed among modules
 enum AssemblerErrors {

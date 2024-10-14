@@ -17,7 +17,7 @@ static bool isLineCommand(const char* line) {
     return isalpha(line[0]); // ASK: is this ok?
 }
 
-static Errors readCommandsFromFileToArray(FILE* source, FILE* dest) {
+static AssemblerErrors readCommandsFromFileToArray(FILE* source, FILE* dest) {
     IF_ARG_NULL_RETURN(source);
     IF_ARG_NULL_RETURN(dest);
 
@@ -35,12 +35,11 @@ static Errors readCommandsFromFileToArray(FILE* source, FILE* dest) {
         fprintf(dest, "%d\n", num); // ???
     }
 
-    return STATUS_OK;
+    return ASSEMBLER_STATUS_OK;
 }
 
 AssemblerErrors compileProgram(const char* sourceFileName,
-                      const char*   destFileName) {
-    IF_ARG_NULL_RETURN(sourceFileName);
+                               const char*   destFileName) {
     IF_ARG_NULL_RETURN(sourceFileName);
 
     FILE* sourceFile = fopen(sourceFileName, "r");
@@ -51,10 +50,10 @@ AssemblerErrors compileProgram(const char* sourceFileName,
     IF_NOT_COND_RETURN(destFileName != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
-    Errors error = readCommandsFromFileToArray(sourceFile, destFile);
+    AssemblerErrors error = readCommandsFromFileToArray(sourceFile, destFile);
     IF_ERR_RETURN(error); // FIXME: close files
 
-    return STATUS_OK;
+    return ASSEMBLER_STATUS_OK;
 }
 
 Errors destructAssembler() {

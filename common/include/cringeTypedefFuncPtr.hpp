@@ -2,7 +2,8 @@
 #define CRINGE_HEADER
 
 #include "../../processor/include/processor.hpp"
+#include "../../processor/include/processorErrorsHandler.hpp"
 
-typedef Errors (*processorCommandExecFuncPtr)(Processor* processor);
+typedef ProcessorErrors (*processorCommandExecFuncPtr)(Processor* processor);
 
 #endif

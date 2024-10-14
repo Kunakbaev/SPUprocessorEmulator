@@ -3,7 +3,7 @@
 
 #include "assemblerErrorsHandler.hpp"
 
-Errors compileProgram(const char* sourceFileName, const char* destFileName);
-Errors destructAssembler();
+AssemblerErrors compileProgram(const char* sourceFileName, const char* destFileName);
+AssemblerErrors destructAssembler();
 
 #endif

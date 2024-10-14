@@ -3,6 +3,13 @@
 
 // TODO: manage func ptr typedef more carefull
 #include "cringeTypedefFuncPtr.hpp"
+#include "errorsHandlerDefines.hpp"
+
+// ASK: this define gets redefined in each header, how to solve it?
+// maybe name define with additional name of module to which it belongs
+
+#define IF_ARG_NULL_RETURN(arg) \
+    COMMON_IF_ARG_NULL_RETURN(arg, COMMANDS_ERROR_INVALID_ARGUMENT)
 
 struct CommandStruct {
     size_t commandIndex; // ASK: cringe?
@@ -22,8 +29,18 @@ struct CommandStruct {
 //     DUMP_COMMAND        = 9
 // };
 
-//CommandsEnum getCommandIndexByName(const char* command);
-Errors getCommandByName(const char* commandName, CommandStruct* result);
-Errors getCommandByIndex(size_t index, CommandStruct* result);
+enum CommandErrors {
+    COMMANDS_STATUS_OK                                   = 0,                  // no error, everything is valid
+    COMMANDS_ERROR_INVALID_ARGUMENT                      = 1,                  // usually when argument is set to NULL
+    COMMANDS_ERROR_MEMORY_ALLOCATION_ERROR               = 2,                  // usually when memory allocation by calloc fails
+    COMMANDS_ERROR_MEMORY_REALLOCATION_ERROR             = 3,                  // couldn't reallocate memory
+    COMMANDS_ERROR_COULDNT_OPEN_FILE                     = 4,
+    COMMANDS_ERROR_BAD_INDEX                             = 5,                  // command index index is bigger or equal (0 indexation) than total number of comands
+};
+
+CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
+CommandErrors getCommandByIndex(size_t index, CommandStruct* result);
+
+const char* getErrorMessage(ProcessorErrors error);
 
 #endif

@@ -1,8 +1,8 @@
 #ifndef PROCESSOR_HEADER
 #define PROCESSOR_HEADER
 
+#include "../../external/StackStruct/include/stackLib.hpp"
 #include "processorErrorsHandler.hpp"
-#include "../../StackStruct/include/stackLib.hpp"
 
 const   int PROCESSOR_DATA_TYPE_SIZE = 4; // int
 typedef int processor_data_type;
@@ -16,11 +16,11 @@ struct Processor {
     Stack    stack;
 };
 
-Errors ProcessorConstructor(Processor* processor);
-Errors readProgramBinary(Processor* processor, const char* binFileName);
+ProcessorErrors ProcessorConstructor(Processor* processor);
+ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName);
 
-Errors pushElementToCalculator(Processor* processor);
-Errors runProgramBinary(Processor* processor);
-Errors ProcessorDestructor(Processor* processor);
+ProcessorErrors pushElementToCalculator(Processor* processor);
+ProcessorErrors runProgramBinary(Processor* processor);
+ProcessorErrors ProcessorDestructor(Processor* processor);
 
 #endif

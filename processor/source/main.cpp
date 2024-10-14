@@ -6,5 +6,7 @@ int main() {
     setLoggingLevel(DEBUG);
     LOG_DEBUG("Compiling program (transfer between 'assebmler' code and 'binary'!\n");
 
-    compileProgram("program.asm", "program_code.txt");
+    Processor processor = {};
+    ProcessorErrors error = ProcessorConstructor(&processor);
+    IF_ERR_RETURN(error);
 }

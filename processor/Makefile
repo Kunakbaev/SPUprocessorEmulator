@@ -5,6 +5,8 @@ CFLAGS = -D _DEBUG
 # CFLAGS += -D NDEBUG
 # CFLAGS += -fsanitize=address
 
+MY_LIB_NAME  := my_loglib
+
 # [[fallthrough]]
 
 # 1) libRun -> variable; testRun -> variable
@@ -32,31 +34,27 @@ SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
+# CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
+CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 
 # running all commands without output (@ at the beginning)
-$(LIB_RUN_NAME): $(OBJ)
-	ehco $(OBJ)
-	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) $(CFLAGS)
+$(LIB_RUN_NAME): $(OBJ) $(BUILD_DIR)
+	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) $(CFLAGS)
+
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
 # 	@$(CC) -c $< $(LOGGER_FLAGS) -o $@ $(ASSERT_DEFINE)
 #
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
-	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
-
-# run: $(LIB_RUN_NAME)
-# 	@$(BUILD_DIR)/$(LIB_RUN_NAME)
-
-# $(LIB_RUN_NAME):
-# 	echo bruh
+	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
 run: $(LIB_RUN_NAME)
-
+	./building/$(LIB_RUN_NAME)
 
 
 # -------------------------   HELPER TARGETS   ---------------------------
 
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 clean:
-	rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/$(LIB_RUN_NAME)
+	@rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/$(LIB_RUN_NAME)

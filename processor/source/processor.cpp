@@ -1,15 +1,15 @@
 #include <iostream>
 
-#include "../include/processor.hpp"
 #include "../../common/include/commands.hpp"
+#include "../include/processor.hpp"
 
 const size_t MAX_PROGRAM_CODE_SIZE = 1 << 10;
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
-Errors ProcessorConstructor(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
+ProcessorErrors ProcessorConstructor(Processor* processor) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
 
     *processor = {};
     constructStack(&processor->stack, 0, PROCESSOR_DATA_TYPE_SIZE);
@@ -19,14 +19,14 @@ Errors ProcessorConstructor(Processor* processor) {
 
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
+                       PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
-static Errors getNumberOfLines(FILE* file, int* numOfLines) {
-    IF_ARG_NULL_RETURN(file);
-    IF_ARG_NULL_RETURN(numOfLines);
+static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
+    IF_PROCESSOR_ARG_NULL_RETURN(file);
+    IF_PROCESSOR_ARG_NULL_RETURN(numOfLines);
 
     *numOfLines = 0;
     const char CH_TO_COUNT = '\n';
@@ -38,12 +38,12 @@ static Errors getNumberOfLines(FILE* file, int* numOfLines) {
     //
     // }
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
-static Errors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfLines) {
-    IF_ARG_NULL_RETURN(array);
-    IF_ARG_NULL_RETURN(file);
+static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfLines) {
+    IF_PROCESSOR_ARG_NULL_RETURN(array);
+    IF_PROCESSOR_ARG_NULL_RETURN(file);
 
     int lineIndex = 0;
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
@@ -52,28 +52,28 @@ static Errors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfL
         ++lineIndex;
     }
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
-Errors readProgramBinary(Processor* processor, const char* binFileName) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(binFileName);
+ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
+    IF_PROCESSOR_ARG_NULL_RETURN(binFileName);
 
     FILE* binaryFile = fopen(binFileName, "r");
     IF_NOT_COND_RETURN(binaryFile != NULL,
-                       ERROR_COULDNT_OPEN_FILE);
+                       PROCESSOR_ERROR_COULDNT_OPEN_FILE);
 
     int numOfLines = 0;
-    Errors error = getNumberOfLines(binaryFile, &numOfLines);
+    ProcessorErrors error = getNumberOfLines(binaryFile, &numOfLines);
     IF_ERR_RETURN(error);
 
     processor->programCode = (uint8_t*)calloc(numOfLines, sizeof(uint8_t));
     IF_NOT_COND_RETURN(processor->programCode,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
+                       PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
     error = readCommandsFromFileToArray(processor->programCode, binaryFile, numOfLines);
     IF_ERR_RETURN(error);
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
 /*
@@ -82,19 +82,25 @@ Errors readProgramBinary(Processor* processor, const char* binFileName) {
 
 */
 
-Errors pushElementToCalculator(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
+ProcessorErrors pushElementToCalculator(Processor* processor) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
     IF_NOT_COND_RETURN(processor->instructionPointer + 1 < processor->numberOfInstructions,
-                       ERROR_ARRAY_BAD_INDEX); // TODO: fix errors
+                       PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
 
     // WARNING: be carefull with size of data inserted
     processor_data_type number = processor->programCode[processor->instructionPointer + 1];
+
+    // TODO: rewrite stack errors, so they begin with STACK_
     Errors error = pushElementToStack(&processor->stack, &number);
-    IF_ERR_RETURN(error);
+    if (error != STATUS_OK) {
+        // FIXME: probably overload happens and that's not function that we are looking for
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
 
     processor->instructionPointer += 2;
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
 processor_data_type add2Nums(processor_data_type a, processor_data_type b) {
@@ -121,10 +127,10 @@ processor_data_type div2Nums(processor_data_type a, processor_data_type b) {
 
 typedef processor_data_type (*twoArgsOperationFuncPtr)(processor_data_type a, processor_data_type b);
 
-Errors doOperationWith2Args(Processor* processor, twoArgsOperationFuncPtr operation) {
-    IF_ARG_NULL_RETURN(processor);
+ProcessorErrors doOperationWith2Args(Processor* processor, twoArgsOperationFuncPtr operation) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
     IF_NOT_COND_RETURN(processor->instructionPointer + 2 < processor->numberOfInstructions,
-                       ERROR_ARRAY_BAD_INDEX); // TODO: fix errors
+                       PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
 
     // WARNING: be carefull with size of data inserted
     processor_data_type a = processor->programCode[processor->instructionPointer + 1];
@@ -132,15 +138,19 @@ Errors doOperationWith2Args(Processor* processor, twoArgsOperationFuncPtr operat
     processor_data_type result = (*operation)(a, b);
 
     Errors error = pushElementToStack(&processor->stack, &result);
-    IF_ERR_RETURN(error);
+    if (error != STATUS_OK) {
+        // FIXME: probably overload happens and that's not function that we are looking for
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
 
     processor->instructionPointer += 3;
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
-Errors runProgramBinary(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
+ProcessorErrors runProgramBinary(Processor* processor) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
 
     processor->instructionPointer = 0;
     for (; processor->instructionPointer < processor->numberOfInstructions; ++processor->instructionPointer) {
@@ -149,33 +159,44 @@ Errors runProgramBinary(Processor* processor) {
 
         // ASK: ?????
         CommandStruct command = {};
-        Errors error = getCommandByIndex(commandIndex, &command);
-        IF_ERR_RETURN(error);
+        CommandErrors error = getCommandByIndex(commandIndex, &command);
+        if (error != COMMANDS_STATUS_OK) {
+            // FIXME: probably overload happens and that's not function that we are looking for
+            LOG_ERROR(getErrorMessage(error));
+            return PROCESSOR_ERROR_COMMANDS_ERROR;
+        }
 
+        ProcessorErrors err = PROCESSOR_STATUS_OK;
         if (command.commandName == "push") {
-            error = pushElementToCalculator(processor);
-            IF_ERR_RETURN(error);
+            err = pushElementToCalculator(processor);
+            IF_ERR_RETURN(err);
             continue;
         }
 
-        error = doOperationWith2Args(processor,
+        // TODO:
+        err = doOperationWith2Args(processor, add2Nums);
 
         // error = (*command.actionFunc)(processor);
         // IF_ERR_RETURN(error);
     }
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
 
-Errors ProcessorDestructor(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
+ProcessorErrors ProcessorDestructor(Processor* processor) {
+    IF_PROCESSOR_ARG_NULL_RETURN(processor);
 
     Errors error = destructStack(&processor->stack);
-    IF_ERR_RETURN(error);
+    if (error != STATUS_OK) {
+        // FIXME: probably overload happens and that's not function that we are looking for
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
     FREE(processor->programCode);
     processor = {}; // ASK: is this ok?
 
     FREE(fileLineBuffer);
 
-    return STATUS_OK;
+    return PROCESSOR_STATUS_OK;
 }
