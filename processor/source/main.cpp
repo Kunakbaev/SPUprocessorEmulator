@@ -13,6 +13,7 @@ int main() {
     Stack stack = {};
     constructStack(&stack, 0, 4);
     int x = 10;
+
     pushElementToStack(&stack, &x);
 
     // Processor processor = {};
