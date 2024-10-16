@@ -1,7 +1,9 @@
 #include <iostream>
 
-#include "../../common/include/commands.hpp"
+#include "../../common/commands/include/commands.hpp"
+#include "../../common/include/errorsHandlerDefines.hpp"
 #include "../include/processor.hpp"
+#include "../../common/commands/include/operations.hpp"
 
 
 // ASK: is this good solution?
@@ -10,7 +12,7 @@
     COMMON_IF_ARG_NULL_RETURN(arg, PROCESSOR_ERROR_INVALID_ARGUMENT, getProcessorErrorMessage)
 
 #define IF_ERR_RETURN(error) \
-    COMMON_IF_ERR_RETURN(error, getProcessorErrorMessage)
+    COMMON_IF_ERR_RETURN(error, getProcessorErrorMessage, PROCESSOR_STATUS_OK)
 
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getProcessorErrorMessage)
@@ -27,10 +29,14 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     *processor = {};
-    constructStack(&processor->stack, 0, PROCESSOR_DATA_TYPE_SIZE);
+    constructStack(&processor->stack, 8, PROCESSOR_DATA_TYPE_SIZE);
     processor->instructionPointer   = 0;
     processor->numberOfInstructions = 0;
     processor->programCode          = NULL;
+
+    processor->registers = (processor_data_type*)calloc(NUM_OF_REGISTERS, sizeof(processor_data_type));
+    IF_NOT_COND_RETURN(processor->registers != NULL,
+                       PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
 
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
@@ -53,6 +59,8 @@ static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
     //
     // }
 
+    LOG_DEBUG_VARS(*numOfLines);
+
     return PROCESSOR_STATUS_OK;
 }
 
@@ -61,6 +69,7 @@ static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, i
     IF_ARG_NULL_RETURN(file);
 
     int lineIndex = 0;
+    rewind(file);
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
         int number = atoi(fileLineBuffer); // FIXME: no error check
         array[lineIndex] = number;
@@ -85,6 +94,7 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     ProcessorErrors error = getNumberOfLines(binaryFile, &numOfLines);
     IF_ERR_RETURN(error);
 
+    processor->numberOfInstructions = numOfLines;
     processor->programCode = (uint8_t*)calloc(numOfLines, sizeof(uint8_t));
     IF_NOT_COND_RETURN(processor->programCode,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
@@ -94,108 +104,76 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     return PROCESSOR_STATUS_OK;
 }
 
-/*
-
-
-
-*/
-
-ProcessorErrors pushElementToCalculator(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_NOT_COND_RETURN(processor->instructionPointer + 1 < processor->numberOfInstructions,
-                       PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
-
-    // WARNING: be carefull with size of data inserted
-    processor_data_type number = processor->programCode[processor->instructionPointer + 1];
-
-    // TODO: rewrite stack errors, so they begin with STACK_
-    Errors error = pushElementToStack(&processor->stack, &number);
-    if (error != STATUS_OK) {
-        // FIXME: probably overload happens and that's not function that we are looking for
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
-    processor->instructionPointer += 2;
-
-    return PROCESSOR_STATUS_OK;
-}
-
-processor_data_type add2Nums(processor_data_type a, processor_data_type b) {
-    return a + b;
-}
-
-processor_data_type sub2Nums(processor_data_type a, processor_data_type b) {
-    return a - b;
-}
-
-processor_data_type mul2Nums(processor_data_type a, processor_data_type b) {
-    return a * b;
-}
-
-// WARNING: be carefull, integer division
-processor_data_type div2Nums(processor_data_type a, processor_data_type b) {
-    if (b == 0) {
-        LOG_ERROR("zero division"); // TODO: manage error
-        return 0;
-    }
-
-    return a / b;
-}
-
-typedef processor_data_type (*twoArgsOperationFuncPtr)(processor_data_type a, processor_data_type b);
-
-ProcessorErrors doOperationWith2Args(Processor* processor, twoArgsOperationFuncPtr operation) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_NOT_COND_RETURN(processor->instructionPointer + 2 < processor->numberOfInstructions,
-                       PROCESSOR_ERROR_BAD_INS_POINTER); // TODO: fix errors
-
-    // WARNING: be carefull with size of data inserted
-    processor_data_type a = processor->programCode[processor->instructionPointer + 1];
-    processor_data_type b = processor->programCode[processor->instructionPointer + 2];
-    processor_data_type result = (*operation)(a, b);
-
-    Errors error = pushElementToStack(&processor->stack, &result);
-    if (error != STATUS_OK) {
-        // FIXME: probably overload happens and that's not function that we are looking for
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
-    processor->instructionPointer += 3;
-
-    return PROCESSOR_STATUS_OK;
-}
-
 ProcessorErrors runProgramBinary(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     processor->instructionPointer = 0;
-    for (; processor->instructionPointer < processor->numberOfInstructions; ++processor->instructionPointer) {
+    for (; processor->instructionPointer < processor->numberOfInstructions;) {
         int commandIndex = processor->programCode[processor->instructionPointer];
         LOG_DEBUG_VARS(processor->instructionPointer, commandIndex);
 
-        // ASK: ?????
         CommandStruct command = {};
         CommandErrors error = getCommandByIndex(commandIndex, &command);
+        LOG_DEBUG_VARS(command.commandIndex, command.commandName);
         if (error != COMMANDS_STATUS_OK) {
             // FIXME: probably overload happens and that's not function that we are looking for
             LOG_ERROR(getCommandsErrorMessage(error));
             return PROCESSOR_ERROR_COMMANDS_ERROR;
         }
 
-        ProcessorErrors err = PROCESSOR_STATUS_OK;
-        if (command.commandName == "push") {
-            err = pushElementToCalculator(processor);
-            IF_ERR_RETURN(err);
+        // ASK: we don't have switch, so what to do? Use hashing or just ifs?
+        CommandErrors err = COMMANDS_STATUS_OK;
+        // end of 'program'
+        if (strcmp(command.commandName, "halt") == 0) {
+            break;
+        }
+
+        if (strcmp(command.commandName, "push") == 0) {
+            LOG_DEBUG("push");
+            err = pushToProcessorStack(processor->programCode, &processor->instructionPointer,
+                                       processor->numberOfInstructions, &processor->stack);
+            if (err != COMMANDS_STATUS_OK) {
+                LOG_ERROR(getCommandsErrorMessage(err));
+                return PROCESSOR_ERROR_COMMANDS_ERROR;
+            }
             continue;
         }
 
-        // TODO:
-        err = doOperationWith2Args(processor, add2Nums);
+        if (strcmp(command.commandName, "out") == 0) {
+            LOG_DEBUG("out");
+            err = popAndPrintLastInStack(&(processor->stack), &processor->instructionPointer,
+                                         processor->numberOfInstructions);
+            if (err != COMMANDS_STATUS_OK) {
+                LOG_ERROR(getCommandsErrorMessage(err));
+                return PROCESSOR_ERROR_COMMANDS_ERROR;
+            }
+            continue;
+        }
 
         // error = (*command.actionFunc)(processor);
         // IF_ERR_RETURN(error);
+
+        // TODO: add operation ptr to commands
+
+        twoArgsOperFuncPtr* funcPtr2Args = NULL;
+        // ASK: smells like shit
+        if (strcmp(command.commandName, "add") == 0) funcPtr2Args = add2nums;
+        if (strcmp(command.commandName, "sub") == 0) funcPtr2Args = sub2nums;
+        if (strcmp(command.commandName, "mul") == 0) funcPtr2Args = mul2nums;
+        if (strcmp(command.commandName, "div") == 0) funcPtr2Args = div2nums;
+
+        if (funcPtr2Args != NULL) {
+            LOG_DEBUG("two args operation");
+            err = executeOperationWith2Args(processor->programCode, &processor->instructionPointer,
+                                            processor->numberOfInstructions, &processor->stack,
+                                            funcPtr2Args);
+            if (err != COMMANDS_STATUS_OK) {
+                LOG_ERROR(getCommandsErrorMessage(err));
+                return PROCESSOR_ERROR_COMMANDS_ERROR;
+            }
+        }
+
+        LOG_DEBUG_VARS(processor->instructionPointer, processor->numberOfInstructions);
     }
 
     return PROCESSOR_STATUS_OK;

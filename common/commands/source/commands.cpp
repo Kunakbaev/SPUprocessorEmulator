@@ -3,7 +3,6 @@
 #include "../include/commands.hpp"
 #include "../../include/errorsHandlerDefines.hpp"
 #include "../../../external/StackStruct/include/stackLib.hpp"
-#include "operations.cpp"
 
 // ASK:
 // CommandStruct commands[NUM_OF_COMMANDS] = {
@@ -19,6 +18,11 @@
 constexpr CommandStruct COMMANDS[] = {
     {1, "push"},
     {2, "add"},
+    {3, "sub"},
+    {4, "mul"},
+    {5, "div"},
+    {6, "out"},
+    {7, "halt"},
 };
 
 const size_t NUM_OF_COMMANDS = sizeof(COMMANDS) / sizeof(*COMMANDS); // ?????????????
@@ -26,26 +30,54 @@ const size_t NUM_OF_COMMANDS = sizeof(COMMANDS) / sizeof(*COMMANDS); // ????????
 // ASK: it's bad to pass whole Processor struct, because it has to many fields that this function
 // doesn't need (stack of func calls, registers)
 
-CommandErrors exectueeOperationWith2Args(const uint8_t* programCode, size_t* instructionPointer,
-                                         size_t numberOfInstructions,
-                                         Stack* stack,
-                                         twoArgsOperFuncPtr operation) {
+CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
+                                     size_t numberOfInstructions) {
+    IF_ARG_NULL_RETURN(stack);
+    IF_ARG_NULL_RETURN(instructionPointer);
+    IF_NOT_COND_RETURN(*instructionPointer < numberOfInstructions,
+                       COMMANDS_ERROR_BAD_INSTR_PTR);
+
+    processor_data_type num = 0;
+    // dumpStackLog(stack);
+    LOG_DEBUG_VARS(stack->numberOfElements);
+    Errors error = popElementToStack(stack, &num);
+    if (error != NULL) {
+        LOG_ERROR(getErrorMessage(error));
+        return COMMANDS_ERROR_STACK_ERROR;
+    }
+
+    // FIXME: do something with different types
+    printf("last in stack : %d\n", num);
+    LOG_DEBUG_VARS("last in stack : ", num);
+
+    *instructionPointer += 1;
+
+    return COMMANDS_STATUS_OK;
+}
+
+CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* instructionPointer,
+                                        size_t numberOfInstructions,
+                                        Stack* stack,
+                                        twoArgsOperFuncPtr operation) {
     IF_ARG_NULL_RETURN(programCode);
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(instructionPointer);
     IF_ARG_NULL_RETURN(operation);
-    IF_NOT_COND_RETURN(instructionPointer + 2 < numberOfInstructions,
+    IF_NOT_COND_RETURN(*instructionPointer < numberOfInstructions,
                        COMMANDS_ERROR_BAD_INSTR_PTR);
 
     processor_data_type number_1 = 0;
     processor_data_type number_2 = 0;
     // TODO: define for checking error from separate lib or function
-    Errors error = popElementToStack(stack, &number_1);
+    LOG_DEBUG_VARS(stack->numberOfElements);
+    Errors error = popElementToStack(stack, &number_2);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return COMMANDS_ERROR_STACK_ERROR;
     }
-    error = popElementToStack(stack, &number_2);
+
+    error = popElementToStack(stack, &number_1);
+    LOG_DEBUG_VARS(stack->numberOfElements);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return COMMANDS_ERROR_STACK_ERROR;
@@ -54,27 +86,34 @@ CommandErrors exectueeOperationWith2Args(const uint8_t* programCode, size_t* ins
     LOG_DEBUG_VARS(number_1, number_2, operationResult);
 
     error = pushElementToStack(stack, &operationResult);
+    LOG_DEBUG_VARS(stack->numberOfElements);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return COMMANDS_ERROR_STACK_ERROR;
     }
 
-    instructionPointer += 3;
+    *instructionPointer += 1;
     return COMMANDS_STATUS_OK;
 }
 
-CommandErrors pushToProcessorStack(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(processor->programCode);
+CommandErrors pushToProcessorStack(const uint8_t* programCode, size_t* instructionPointer,
+                                   size_t numberOfInstructions,
+                                   Stack* stack) {
+    IF_ARG_NULL_RETURN(programCode);
+    IF_ARG_NULL_RETURN(instructionPointer);
+    IF_ARG_NULL_RETURN(stack);
+    IF_NOT_COND_RETURN(*instructionPointer + 2 < numberOfInstructions,
+                       COMMANDS_ERROR_BAD_INSTR_PTR);
 
-    processor_data_type number = processor->programCode[processor->instructionPointer + 1];
-    Errors error = pushElementToStack(&processor->stack, &number);
+    processor_data_type number = programCode[*instructionPointer + 1];
+    Errors error = pushElementToStack(stack, &number);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return COMMANDS_ERROR_STACK_ERROR;
     }
+    LOG_DEBUG_VARS(stack->numberOfElements);
 
-    processor->instructionPointer += 2;
+    *instructionPointer += 2;
     return COMMANDS_STATUS_OK;
 }
 

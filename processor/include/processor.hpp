@@ -4,16 +4,25 @@
 #include "../../external/StackStruct/include/stackLib.hpp"
 #include "processorErrorsHandler.hpp"
 
-const   int PROCESSOR_DATA_TYPE_SIZE = 4; // int
+const int PROCESSOR_DATA_TYPE_SIZE = 4; // int
+const int NUM_OF_REGISTERS = 4;
 typedef int processor_data_type;
 
 static_assert(sizeof(processor_data_type) == PROCESSOR_DATA_TYPE_SIZE);
+
+enum Registers {
+    AX = 0,
+    BX = 1,
+    CX = 2,
+    DX = 3,
+};
 
 struct Processor {
     size_t   numberOfInstructions;
     size_t   instructionPointer;
     uint8_t* programCode; // WARNING: be careful with small data type
     Stack    stack;
+    processor_data_type* registers;
 };
 
 ProcessorErrors ProcessorConstructor(Processor* processor);

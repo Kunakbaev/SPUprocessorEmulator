@@ -34,12 +34,8 @@ endif
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 # SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 SRC := ./$(SOURCE_DIR)/main.cpp ./$(SOURCE_DIR)/assembly.cpp ./$(SOURCE_DIR)/assemblerErrorsHandler.cpp
-# SRC := ./$(SOURCE_DIR)/main.cpp
-
-
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
-STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
 # CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include

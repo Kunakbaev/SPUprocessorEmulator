@@ -4,6 +4,7 @@
 // TODO: manage func ptr typedef more carefull
 #include "commandsErrorsHandler.hpp"
 #include "../../../processor/include/processor.hpp"
+#include "../include/operations.hpp"
 
 // ASK: this define gets redefined in each header, how to solve it?
 // maybe name define with additional name of module to which it belongs
@@ -27,7 +28,16 @@ struct CommandStruct {
 //     DUMP_COMMAND        = 9
 // };
 
-CommandErrors executeCommand(Processor* processor);
+CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
+                                     size_t numberOfInstructions);
+CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* instructionPointer,
+                                        size_t numberOfInstructions,
+                                        Stack* stack,
+                                        twoArgsOperFuncPtr operation);
+CommandErrors pushToProcessorStack(const uint8_t* programCode, size_t* instructionPointer,
+                                   size_t numberOfInstructions,
+                                   Stack* stack);
+
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result);
 

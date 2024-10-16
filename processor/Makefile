@@ -7,18 +7,11 @@ CFLAGS = -D _DEBUG
 
 MY_LIB_NAME  := my_loglib
 
-# [[fallthrough]]
-
-# 1) libRun -> variable; testRun -> variable
-# 2) build directory -> variable, -o flags for each compilation
-# 3) @> @^ @< $<
-# 4) PHONY - что делает
-
-# ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR         := source
 LIB_RUN_NAME       := processor
 BUILD_DIR          := building
-# LOG_LIB_DIR       := LoggerLib/source
+COMMANDS_DIR	   := ../common/commands
+COMMANDS_BUILD_DIR := $(COMMANDS_DIR)/building
 
 ifeq ($(DEBUG), 0)
 	ASSERT_DEFINE = -DNDEBUG
@@ -32,6 +25,7 @@ endif
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
+COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/operations.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 
 # CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
@@ -39,8 +33,9 @@ CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStru
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
-	echo $(SRC)
-	$(CC) $^ -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L../external/StackStruct/ -l:stackLib.a $(CFLAGS)
+	@echo $(SRC)
+	@make -C $(COMMANDS_DIR)
+	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)

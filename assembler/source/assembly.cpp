@@ -68,20 +68,20 @@ static AssemblerErrors readCommandsFromFileToArray(FILE* source, FILE* dest) {
             argument = firstSpacePtr + 1; // WARNING: can overflow
         LOG_DEBUG_VARS(commandName, argument);
 
-        if (isLineCommand(commandName)) {
-            CommandErrors error = getCommandByName(commandName, &command); // ???
-            if (error != COMMANDS_STATUS_OK) {
-                LOG_ERROR(getCommandsErrorMessage(error));
-                return ASSEMBLER_ERROR_COMMAND_ERROR;
-            }
-
-            LOG_DEBUG_VARS(command.commandIndex, command.commandName);
-            num = command.commandIndex;
-        } else {
-            num = atoi(fileLineBuffer);
+        CommandErrors error = getCommandByName(commandName, &command); // ???
+        if (error != COMMANDS_STATUS_OK) {
+            LOG_ERROR(getCommandsErrorMessage(error));
+            return ASSEMBLER_ERROR_COMMAND_ERROR;
         }
 
+        LOG_DEBUG_VARS(command.commandIndex, command.commandName);
+        num = command.commandIndex;
+
         fprintf(dest, "%d\n", num); // ???
+        if (strlen(argument) != 0) {
+            // FIXME: what to do if it's double
+            fprintf(dest, "%d\n", atoi(argument));
+        }
     }
 
     return ASSEMBLER_STATUS_OK;
@@ -97,8 +97,11 @@ AssemblerErrors compileProgram(const char* sourceFileName,
 
     LOG_DEBUG("opened source file");
     FILE* destFile   = fopen(destFileName, "w"); // FIXME: close first file
-    IF_NOT_COND_RETURN(destFileName != NULL,
-                       ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
+    if (destFile == NULL) {
+        fclose(sourceFile); // hope that it will close
+        LOG_ERROR(getAssemblerErrorMessage(ASSEMBLER_ERROR_COULDNT_OPEN_FILE));
+        return ASSEMBLER_ERROR_COULDNT_OPEN_FILE;
+    }
 
     LOG_DEBUG("opened dest file");
     AssemblerErrors error = readCommandsFromFileToArray(sourceFile, destFile);
