@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "../include/assembly.hpp"
-#include "../../common/include/commands.hpp"
+#include "../../common/commands/include/commands.hpp"
 
 
 
@@ -11,7 +11,7 @@
     COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT, getAssemblerErrorMessage)
 
 #define IF_ERR_RETURN(error) \
-    COMMON_IF_ERR_RETURN(error, getAssemblerErrorMessage)
+    COMMON_IF_ERR_RETURN(error, getAssemblerErrorMessage, COMMANDS_STATUS_OK)
 
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getAssemblerErrorMessage)
@@ -22,6 +22,14 @@
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
+
+AssemblerErrors constructAssembler() {
+    fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
+    IF_NOT_COND_RETURN(fileLineBuffer != NULL,
+                       ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
+
+    return ASSEMBLER_STATUS_OK;
+}
 
 static bool isLineCommand(const char* line) {
     if (line == NULL) { // FIXME:
@@ -36,17 +44,39 @@ static AssemblerErrors readCommandsFromFileToArray(FILE* source, FILE* dest) {
     IF_ARG_NULL_RETURN(source);
     IF_ARG_NULL_RETURN(dest);
 
+    LOG_DEBUG("read");
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, source)) {
         // somehow get command index
         CommandStruct command = {};
 
         int num = 0;
-        if (isLineCommand(fileLineBuffer)) {
-            CommandErrors error = getCommandByName(fileLineBuffer, &command); // ???
+        LOG_DEBUG_VARS(fileLineBuffer);
+        size_t lineLen = strlen(fileLineBuffer);
+        if (lineLen >= 1)
+            *(fileLineBuffer + lineLen - 1) = '\0';
+
+        // TODO: check that num of spaces is <= 1
+        // check that command is in right format
+        // check that command exists
+        char* firstSpacePtr = strchr(fileLineBuffer, ' ');
+        LOG_DEBUG_VARS(firstSpacePtr);
+        if (firstSpacePtr != NULL)
+            *firstSpacePtr = '\0';
+        const char* commandName = fileLineBuffer;
+        const char* argument = "";
+        if (firstSpacePtr != NULL)
+            argument = firstSpacePtr + 1; // WARNING: can overflow
+        LOG_DEBUG_VARS(commandName, argument);
+
+        if (isLineCommand(commandName)) {
+            CommandErrors error = getCommandByName(commandName, &command); // ???
             if (error != COMMANDS_STATUS_OK) {
                 LOG_ERROR(getCommandsErrorMessage(error));
                 return ASSEMBLER_ERROR_COMMAND_ERROR;
             }
+
+            LOG_DEBUG_VARS(command.commandIndex, command.commandName);
+            num = command.commandIndex;
         } else {
             num = atoi(fileLineBuffer);
         }
@@ -65,10 +95,12 @@ AssemblerErrors compileProgram(const char* sourceFileName,
     IF_NOT_COND_RETURN(sourceFile != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
+    LOG_DEBUG("opened source file");
     FILE* destFile   = fopen(destFileName, "w"); // FIXME: close first file
     IF_NOT_COND_RETURN(destFileName != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
+    LOG_DEBUG("opened dest file");
     AssemblerErrors error = readCommandsFromFileToArray(sourceFile, destFile);
     IF_ERR_RETURN(error); // FIXME: close files
 

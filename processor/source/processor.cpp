@@ -64,6 +64,7 @@ static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, i
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
         int number = atoi(fileLineBuffer); // FIXME: no error check
         array[lineIndex] = number;
+        LOG_DEBUG_VARS(lineIndex, number);
         ++lineIndex;
     }
 
@@ -74,11 +75,13 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     IF_ARG_NULL_RETURN(processor);
     IF_ARG_NULL_RETURN(binFileName);
 
+    LOG_DEBUG("read binary");
     FILE* binaryFile = fopen(binFileName, "r");
     IF_NOT_COND_RETURN(binaryFile != NULL,
                        PROCESSOR_ERROR_COULDNT_OPEN_FILE);
 
     int numOfLines = 0;
+    LOG_DEBUG("ok");
     ProcessorErrors error = getNumberOfLines(binaryFile, &numOfLines);
     IF_ERR_RETURN(error);
 

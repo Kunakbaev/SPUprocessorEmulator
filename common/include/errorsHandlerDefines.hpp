@@ -1,14 +1,18 @@
 #ifndef COMMON_ERRORS_HANDLER_DEFINES_HPP
 #define COMMON_ERRORS_HANDLER_DEFINES_HPP
 
+#include <assert.h>
+
+#include "logLib.hpp"
 #include "utils.hpp"
 
+// ASK: how to check if error == OK if all enums are different type
 // log and return happens only if error realy occured (error != STATUS_OK)
-#define COMMON_IF_ERR_RETURN(error, getErrorMessageFunc)                                        \
+#define COMMON_IF_ERR_RETURN(error, getErrorMessageFunc, OK_STATUS)                                        \
     do {                                                            \
-        if (error != STATUS_OK) {                                   \
+        if (error != OK_STATUS) {                                   \
             LOG_ERROR(getErrorMessageFunc(error));                      \
-            assert(error != STATUS_OK);                             \
+            assert(error != OK_STATUS);                             \
             return error;                                           \
         }                                                           \
     } while(0)

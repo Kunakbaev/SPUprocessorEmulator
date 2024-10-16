@@ -1,0 +1,6 @@
+[submodule "external/LoggerLib"]
+	path = external/LoggerLib
+	url = https://github.com/Kunakbaev/LoggerLib
+[submodule "external/StackStruct"]
+	path = external/StackStruct
+	url = https://github.com/Kunakbaev/StackStruct

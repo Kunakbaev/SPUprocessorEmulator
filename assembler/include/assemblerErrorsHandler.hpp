@@ -1,7 +1,6 @@
 #ifndef ASSEMBLER_INCLUDE_ASSEMBLER_ERRORS_HANDLER_HPP
 #define ASSEMBLER_INCLUDE_ASSEMBLER_ERRORS_HANDLER_HPP
 
-#include "../../common/include/commands.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
 
 // ASK: how to rewrite this enum, so errors are distributed among modules

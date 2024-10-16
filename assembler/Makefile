@@ -18,6 +18,8 @@ MY_LIB_NAME  := my_loglib
 SOURCE_DIR         := source
 LIB_RUN_NAME       := assembler
 BUILD_DIR          := building
+COMMANDS_DIR	   := ../common/commands
+COMMANDS_BUILD_DIR := $(COMMANDS_DIR)/building
 # LOG_LIB_DIR       := LoggerLib/source
 
 ifeq ($(DEBUG), 0)
@@ -31,20 +33,23 @@ endif
 # LOGGER_SRC 			:= $(LOG_LIB_DIR)/colourfullPrint.cpp $(LOG_LIB_DIR)/debugMacros.cpp $(LOG_LIB_DIR)/logLib.cpp
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 # SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
-SRC := ./$(SOURCE_DIR)/main.cpp ./$(SOURCE_DIR)/assembly.cpp ./$(SOURCE_DIR)/assemblerErrorsHandler.cpp ../common/source/commands.cpp
+SRC := ./$(SOURCE_DIR)/main.cpp ./$(SOURCE_DIR)/assembly.cpp ./$(SOURCE_DIR)/assemblerErrorsHandler.cpp
 # SRC := ./$(SOURCE_DIR)/main.cpp
 
 
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
+COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 STACK_BUILDING_DIR_OBJ  := $(wildcard ./$(STACK_BUILDING_DIR)/*.o)
 
 # CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 
 # running all commands without output (@ at the beginning)
-$(LIB_RUN_NAME): $(OBJ) $(BUILD_DIR)
-	echo $(OBJ)
-	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) $(CFLAGS)
+$(LIB_RUN_NAME): $(OBJ)
+# @echo $(OBJ)
+# @echo $(COMMON_OBJ)
+	@make -C $(COMMANDS_DIR)
+	@$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)

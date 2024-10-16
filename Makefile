@@ -21,6 +21,8 @@ endif
 # LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 SRC 	   				:= common/source/commands.cpp
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
+OBJ_PROCESSOR			:= processor/building/main.o processor/building/processor.o processor/building/processorErrorsHandler.o
+OBJ_ASSEMBLER			:= assembler/building/main.o assembler/building/assembly.o assembler/building/assemblerErrorsHandler.o
 
 processor:
 	make -C ./processor
@@ -30,17 +32,13 @@ assembler:
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
-	$(CC) $< -o $(BUILD_DIR)/$(LIB_RUN_NAME) -lmy_loglib $(CFLAGS) -I processor/include/
+	$(CC) $^ $(OBJ_PROCESSOR) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -L./external/StackStruct/ -l:stackLib.a -lmy_loglib $(CFLAGS) -I processor/include/ -I external/StackStruct/include
 
 $(BUILD_DIR)/%.o: common/source/%.cpp $(BUILD_DIR)
 	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
-# run: $(LIB_RUN_NAME) processor
-# 	./buidling/$(LIB_RUN_NAME)
-
-run: $(LIB_RUN_NAME) assembler
-	./buidling/$(LIB_RUN_NAME)
-
+run: $(LIB_RUN_NAME) processor
+	./building/$(LIB_RUN_NAME)
 
 # -------------------------   HELPER TARGETS   ---------------------------
 

@@ -1,11 +1,10 @@
 CC			 := g++
 CFLAGS 		 := -D _DEBUG -lm -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -pie -fPIE -Werror=vla
-LOGGER_FLAGS :=
 CFLAGS = -D _DEBUG
 # CFLAGS += -D NDEBUG
 # CFLAGS += -fsanitize=address
 
-MY_LIB_NAME  := my_loglib
+MY_LOGLIB_NAME  := my_loglib
 
 # [[fallthrough]]
 
@@ -16,7 +15,7 @@ MY_LIB_NAME  := my_loglib
 
 # ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR         := source
-LIB_RUN_NAME       := processor
+LIB_RUN_NAME       := commands
 BUILD_DIR          := building
 # LOG_LIB_DIR       := LoggerLib/source
 
@@ -35,27 +34,21 @@ OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 
 # CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
-CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/include
 
 # running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
-	echo $(SRC)
-	$(CC) $^ -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L../external/StackStruct/ -l:stackLib.a $(CFLAGS)
+	@$(CC) $^ -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOGLIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
 #
 # $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
 # 	@$(CC) -c $< $(LOGGER_FLAGS) -o $@ $(ASSERT_DEFINE)
 #
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
-	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
-
-run: $(LIB_RUN_NAME)
-	./building/$(LIB_RUN_NAME)
-
+	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
 # -------------------------   HELPER TARGETS   ---------------------------
 
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 clean:
 	@rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/$(LIB_RUN_NAME)

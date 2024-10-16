@@ -13,10 +13,43 @@ if make file changes just run 'bear -- make run' and than change compile_command
 
 */
 
+#define IF_MAIN_ERR_RETURN(error) \
+    do {                                                            \
+        if (error != ASSEMBLER_STATUS_OK) {                         \
+            LOG_ERROR(getAssemblerErrorMessage(error));             \
+            assert(error != ASSEMBLER_STATUS_OK);                   \
+            return error;                                           \
+        }                                                           \
+    } while(0)
+
 int main() {
     setLoggingLevel(DEBUG);
     printf("I am bruh from assembler main\n");
     LOG_DEBUG("Compiling program (transfer between 'assebmler' code and 'binary'!\n");
 
-    AssemblerErrors error = compileProgram("../program.asm", "programBinCode.txt");
+    AssemblerErrors error = ASSEMBLER_STATUS_OK;
+    error = constructAssembler();
+    IF_MAIN_ERR_RETURN(error);
+
+    error = compileProgram("/home/rodion/Documents/Work/SPUprocessorEmulator/program.asm",
+                           "/home/rodion/Documents/Work/SPUprocessorEmulator/programBinCode.txt");
+    IF_MAIN_ERR_RETURN(error);
 }
+
+/*
+
+push 30
+push 70
+add
+push 60
+push 40
+sub
+div
+push 13
+push 3
+sub
+add
+out
+halt
+
+*/
