@@ -28,4 +28,6 @@ int main() {
 
     error = runProgramBinary(&processor);
     IF_MAIN_ERR_RETURN(error);
+
+    return 0;
 }

@@ -5,6 +5,7 @@
 // #include "../../external/LoggerLib/loglib.so"
 // #include "../../external/LoggerLib/include/logLib.hpp"
 #include "logLib.hpp"
+#include "../include/tableOfLabels.hpp"
 
 /*
 
@@ -13,7 +14,7 @@ if make file changes just run 'bear -- make run' and than change compile_command
 
 */
 
-#define IF_MAIN_ERR_RETURN(error) \
+#define IF_MAIN_ERR_RETURN(error)                                   \
     do {                                                            \
         if (error != ASSEMBLER_STATUS_OK) {                         \
             LOG_ERROR(getAssemblerErrorMessage(error));             \
@@ -24,8 +25,19 @@ if make file changes just run 'bear -- make run' and than change compile_command
 
 int main() {
     setLoggingLevel(DEBUG);
-    printf("I am bruh from assembler main\n");
+    //printf("I am bruh from assembler main\n");
     LOG_DEBUG("Compiling program (transfer between 'assebmler' code and 'binary'!\n");
+
+//     TableOfLabelsErrors error = TABLE_OF_LABELS_ERROR_STATUS_OK;
+//     error = constructTableOfLabels();
+//
+//     addLabelName("first");
+//     addSecondName("second");
+//
+//
+//     error = destructTableOfLabels();
+
+//    return 0;
 
     AssemblerErrors error = ASSEMBLER_STATUS_OK;
     error = constructAssembler();
@@ -34,6 +46,8 @@ int main() {
     error = compileProgram("/home/rodion/Documents/Work/SPUprocessorEmulator/program.asm",
                            "/home/rodion/Documents/Work/SPUprocessorEmulator/programBinCode.txt");
     IF_MAIN_ERR_RETURN(error);
+
+    return 0;
 }
 
 /*

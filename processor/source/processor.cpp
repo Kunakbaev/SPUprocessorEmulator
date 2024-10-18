@@ -25,11 +25,30 @@ const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
+const char* registerNames[] = { "AX", "BX", "CX", "DX" };
+
+const size_t NUM_OF_REGS = sizeof(registerNames) / sizeof(*registerNames);
+
+ProcessorErrors findRegName(const char* name, int* ind) {
+    IF_ARG_NULL_RETURN(name);
+    IF_ARG_NULL_RETURN(ind);
+
+    *ind = -1;
+    for (size_t regInd = 0; regInd < NUM_OF_REGS; ++regInd) {
+        if (strcmp(name, registerNames[regInd]) == 0) {
+            *ind = regInd;
+            return PROCESSOR_STATUS_OK;
+        }
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
 ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     *processor = {};
-    constructStack(&processor->stack, 8, PROCESSOR_DATA_TYPE_SIZE);
+    constructStack(&processor->stackOfVars, 8, PROCESSOR_DATA_TYPE_SIZE);
     processor->instructionPointer   = 0;
     processor->numberOfInstructions = 0;
     processor->programCode          = NULL;
@@ -104,6 +123,142 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     return PROCESSOR_STATUS_OK;
 }
 
+// ends (finishes) 'program'
+static ProcessorErrors haltCommandFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    LOG_DEBUG("halt");
+    // for loop will end, because conditions is not satisfied any longer
+    processor->instructionPointer = processor->numberOfInstructions;
+
+    return PROCESSOR_STATUS_OK;
+}
+
+ProcessorErrors pushCommandFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    LOG_DEBUG("push");
+    CommandErrors err = pushToProcessorStack(processor->programCode, &processor->instructionPointer,
+                                             processor->numberOfInstructions, &processor->stackOfVars);
+    if (err != COMMANDS_STATUS_OK) {
+        LOG_ERROR(getCommandsErrorMessage(err));
+        return PROCESSOR_ERROR_COMMANDS_ERROR;
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+ProcessorErrors outCommandFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    LOG_DEBUG("out");
+    CommandErrors err = popAndPrintLastInStack(&(processor->stackOfVars), &processor->instructionPointer,
+                                               processor->numberOfInstructions);
+    if (err != COMMANDS_STATUS_OK) {
+        LOG_ERROR(getCommandsErrorMessage(err));
+        return PROCESSOR_ERROR_COMMANDS_ERROR;
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+typedef ProcessorErrors (normalCommandFuncPtr)(Processor* processor);
+
+struct NormalCommandsStruct {
+    const char* commandName;
+    normalCommandFuncPtr* funcPtr;
+};
+
+// takes 2 args from stack, pops them, calculates result, and then pushes it to stack
+// if args are registers, than they need to be firstly put into stack
+struct TwoArgsOperationsCommandsStruct {
+    const char* commandName;
+    twoArgsOperFuncPtr* funcPtr;
+};
+
+struct OneArgOperationsCommandsStruct {
+    const char* commandName;
+    oneArgOperFuncPtr* funcPtr;
+};
+
+NormalCommandsStruct normalCommandsArr[] = {
+    {"halt", haltCommandFunc},
+    {"push", pushCommandFunc},
+    {"out",  outCommandFunc},
+};
+
+TwoArgsOperationsCommandsStruct twoArgsCommandsArr[] = {
+    {"add", add2nums},
+    {"sub", sub2nums},
+    {"mul", mul2nums},
+    {"div", div2nums}
+};
+
+OneArgOperationsCommandsStruct oneArgCommandsArr[] = {
+    {"abs", absOperation},
+};
+
+const size_t NORMAL_COMMANDS_ARR_SIZE   = sizeof(normalCommandsArr)  / sizeof(*normalCommandsArr);
+const size_t TWO_ARGS_COMMANDS_ARR_SIZE = sizeof(twoArgsCommandsArr) / sizeof(*twoArgsCommandsArr);
+const size_t ONE_ARG_COMMANDS_ARR_SIZE  = sizeof(oneArgCommandsArr)  / sizeof(*oneArgCommandsArr);
+
+static ProcessorErrors checkNormalCommands(Processor* processor, const char* commandName) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(commandName);
+
+    for (size_t commandIndex = 0; commandIndex < NORMAL_COMMANDS_ARR_SIZE; ++commandIndex) {
+        if (strcmp(normalCommandsArr[commandIndex].commandName, commandName) != 0)
+            continue;
+
+        ProcessorErrors error = (*normalCommandsArr[commandIndex].funcPtr)(processor);
+        IF_ERR_RETURN(error);
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+// ASK: is this copypaste
+
+ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* commandName) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(commandName);
+
+    for (size_t commandIndex = 0; commandIndex < TWO_ARGS_COMMANDS_ARR_SIZE; ++commandIndex) {
+        if (strcmp(twoArgsCommandsArr[commandIndex].commandName, commandName) != 0)
+            continue;
+
+        CommandErrors error = executeOperationWith2Args(processor->programCode, &processor->instructionPointer,
+                                                        processor->numberOfInstructions, &processor->stackOfVars,
+                                                        twoArgsCommandsArr[commandIndex].funcPtr);
+        if (error != NULL) {
+            LOG_ERROR(getCommandsErrorMessage(error));
+            return PROCESSOR_ERROR_COMMANDS_ERROR;
+        }
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* commandName) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(commandName);
+
+    for (size_t commandIndex = 0; commandIndex < TWO_ARGS_COMMANDS_ARR_SIZE; ++commandIndex) {
+        if (strcmp(twoArgsCommandsArr[commandIndex].commandName, commandName) != 0)
+            continue;
+
+        CommandErrors error = executeOperationWith1Arg(processor->programCode, &processor->instructionPointer,
+                                                       processor->numberOfInstructions, &processor->stackOfVars,
+                                                       twoArgsCommandsArr[commandIndex].funcPtr);
+        if (error != NULL) {
+            LOG_ERROR(getCommandsErrorMessage(error));
+            return PROCESSOR_ERROR_COMMANDS_ERROR;
+        }
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
 ProcessorErrors runProgramBinary(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
@@ -131,7 +286,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
         if (strcmp(command.commandName, "push") == 0) {
             LOG_DEBUG("push");
             err = pushToProcessorStack(processor->programCode, &processor->instructionPointer,
-                                       processor->numberOfInstructions, &processor->stack);
+                                       processor->numberOfInstructions, &processor->stackOfVars);
             if (err != COMMANDS_STATUS_OK) {
                 LOG_ERROR(getCommandsErrorMessage(err));
                 return PROCESSOR_ERROR_COMMANDS_ERROR;
@@ -141,7 +296,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
 
         if (strcmp(command.commandName, "out") == 0) {
             LOG_DEBUG("out");
-            err = popAndPrintLastInStack(&(processor->stack), &processor->instructionPointer,
+            err = popAndPrintLastInStack(&(processor->stackOfVars), &processor->instructionPointer,
                                          processor->numberOfInstructions);
             if (err != COMMANDS_STATUS_OK) {
                 LOG_ERROR(getCommandsErrorMessage(err));
@@ -162,10 +317,11 @@ ProcessorErrors runProgramBinary(Processor* processor) {
         if (strcmp(command.commandName, "mul") == 0) funcPtr2Args = mul2nums;
         if (strcmp(command.commandName, "div") == 0) funcPtr2Args = div2nums;
 
+        // FIXME: foreach structs: name of command
         if (funcPtr2Args != NULL) {
             LOG_DEBUG("two args operation");
             err = executeOperationWith2Args(processor->programCode, &processor->instructionPointer,
-                                            processor->numberOfInstructions, &processor->stack,
+                                            processor->numberOfInstructions, &processor->stackOfVars,
                                             funcPtr2Args);
             if (err != COMMANDS_STATUS_OK) {
                 LOG_ERROR(getCommandsErrorMessage(err));
@@ -182,7 +338,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
 ProcessorErrors ProcessorDestructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    Errors error = destructStack(&processor->stack);
+    Errors error = destructStack(&processor->stackOfVars);
     if (error != STATUS_OK) {
         // FIXME: probably overload happens and that's not function that we are looking for
         LOG_ERROR(getErrorMessage(error));

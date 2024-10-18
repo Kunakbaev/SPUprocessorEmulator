@@ -3,7 +3,6 @@
 
 #include "../../common/include/errorsHandlerDefines.hpp"
 
-// ASK: how to rewrite this enum, so errors are distributed among modules
 enum AssemblerErrors {
     //  --------------------------      GENERAL ERRORS          -----------------------------
     ASSEMBLER_STATUS_OK                                   = 0,                  // no error, everything is valid
@@ -12,6 +11,7 @@ enum AssemblerErrors {
     ASSEMBLER_ERROR_MEMORY_REALLOCATION_ERROR             = 3,                  // couldn't reallocate memory
     ASSEMBLER_ERROR_COULDNT_OPEN_FILE                     = 4,
     ASSEMBLER_ERROR_COMMAND_ERROR                         = 5,
+    ASSEMBLER_ERROR_FILE_STAT_ERROR                       = 6,
 };
 
 const char* getAssemblerErrorMessage(AssemblerErrors error);

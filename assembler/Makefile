@@ -7,20 +7,11 @@ CFLAGS = -D _DEBUG
 
 MY_LIB_NAME  := my_loglib
 
-# [[fallthrough]]
-
-# 1) libRun -> variable; testRun -> variable
-# 2) build directory -> variable, -o flags for each compilation
-# 3) @> @^ @< $<
-# 4) PHONY - что делает
-
-# ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR         := source
 LIB_RUN_NAME       := assembler
 BUILD_DIR          := building
 COMMANDS_DIR	   := ../common/commands
 COMMANDS_BUILD_DIR := $(COMMANDS_DIR)/building
-# LOG_LIB_DIR       := LoggerLib/source
 
 ifeq ($(DEBUG), 0)
 	ASSERT_DEFINE = -DNDEBUG
@@ -30,42 +21,24 @@ endif
 
 # -------------------------   LIB RUN   -----------------------------
 
-# LOGGER_SRC 			:= $(LOG_LIB_DIR)/colourfullPrint.cpp $(LOG_LIB_DIR)/debugMacros.cpp $(LOG_LIB_DIR)/logLib.cpp
-# LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
-# SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
-SRC := ./$(SOURCE_DIR)/main.cpp ./$(SOURCE_DIR)/assembly.cpp ./$(SOURCE_DIR)/assemblerErrorsHandler.cpp
+SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 
-# CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 
-# running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
-# @echo $(OBJ)
-# @echo $(COMMON_OBJ)
 	@make -C $(COMMANDS_DIR)
 	@$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
-#
-# $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
-# 	@$(CC) -c $< $(LOGGER_FLAGS) -o $@ $(ASSERT_DEFINE)
-#
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
 	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
 $(BUILD_DIR)/commands.o: ../common/source/commands.cpp $(BUILD_DIR)
 	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
-# run: $(LIB_RUN_NAME)
-# 	@$(BUILD_DIR)/$(LIB_RUN_NAME)
-
-# $(LIB_RUN_NAME):
-# 	echo bruh
-
 run: $(LIB_RUN_NAME)
 	./building/$(LIB_RUN_NAME)
-
 
 # -------------------------   HELPER TARGETS   ---------------------------
 

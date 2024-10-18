@@ -5,8 +5,7 @@ CFLAGS = -D _DEBUG
 # CFLAGS += -D NDEBUG
 # CFLAGS += -fsanitize=address
 
-MY_LIB_NAME  := my_loglib
-
+MY_LOG_LIB_NAME    := my_loglib
 SOURCE_DIR         := source
 LIB_RUN_NAME       := processor
 BUILD_DIR          := building
@@ -21,32 +20,23 @@ endif
 
 # -------------------------   LIB RUN   -----------------------------
 
-# LOGGER_SRC 			:= $(LOG_LIB_DIR)/colourfullPrint.cpp $(LOG_LIB_DIR)/debugMacros.cpp $(LOG_LIB_DIR)/logLib.cpp
-# LOGGER_OBJ 			:= $(patsubst %.cpp, $(BUILD_DIR)/LOGGER_%.o, $(notdir ${LOGGER_SRC}))
 SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/operations.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 
-# CFLAGS += -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib -lloglib -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
 CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/include
 
-# running all commands without output (@ at the beginning)
 $(LIB_RUN_NAME): $(OBJ)
 	@echo $(SRC)
 	@make -C $(COMMANDS_DIR)
-	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
+	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOG_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
 
-#
-# $(BUILD_DIR)/LOGGER_%.o: $(LOG_LIB_DIR)/%.cpp $(BUILD_DIR)
-# 	@$(CC) -c $< $(LOGGER_FLAGS) -o $@ $(ASSERT_DEFINE)
-#
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
 	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
 run: $(LIB_RUN_NAME)
 	./building/$(LIB_RUN_NAME)
-
 
 # -------------------------   HELPER TARGETS   ---------------------------
 

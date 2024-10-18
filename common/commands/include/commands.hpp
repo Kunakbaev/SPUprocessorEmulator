@@ -6,14 +6,14 @@
 #include "../../../processor/include/processor.hpp"
 #include "../include/operations.hpp"
 
-// ASK: this define gets redefined in each header, how to solve it?
-// maybe name define with additional name of module to which it belongs
-
 #include <cstddef>
+
+
 
 struct CommandStruct {
     size_t commandIndex; // ASK: cringe?
     const char* commandName;
+    size_t sumSizeOfArgsInBytes = 0;
 };
 
 // enum CommandsEnum {
@@ -27,6 +27,8 @@ struct CommandStruct {
 //     DIV_COMMAND         = 7,
 //     DUMP_COMMAND        = 9
 // };
+
+CommandErrors findRegName(const char* name, int* ind);
 
 CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
                                      size_t numberOfInstructions);

@@ -37,3 +37,7 @@ processor_data_type sinOperation(processor_data_type a) {
 processor_data_type cosOperation(processor_data_type a) {
     return sinl(a);
 }
+
+processor_data_type absOperation(processor_data_type a) {
+    return abs(a);
+}

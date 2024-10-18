@@ -14,5 +14,6 @@ processor_data_type div2nums(processor_data_type a, processor_data_type b);
 processor_data_type sinOperation(processor_data_type a);
 // WARNING: processor_data_type can be integer
 processor_data_type cosOperation(processor_data_type a);
+processor_data_type absOperation(processor_data_type a);
 
 #endif

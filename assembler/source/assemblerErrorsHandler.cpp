@@ -15,6 +15,8 @@ const char* getAssemblerErrorMessage(AssemblerErrors error) {
             return "Assembler error: couldn't open file.\n";
         case ASSEMBLER_ERROR_COMMAND_ERROR:
             return "Assembler error: error occured in commands sublib.\n";
+        case ASSEMBLER_ERROR_FILE_STAT_ERROR:
+            return "Assembler error: error couldn't get file size.\n";
 
         default:
             return "Unknown error.\n";
