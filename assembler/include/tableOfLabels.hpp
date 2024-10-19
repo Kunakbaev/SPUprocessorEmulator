@@ -11,7 +11,7 @@ enum TableOfLabelsErrors {
 
 struct Label {
     const char* labelName;
-    int codeLineInd;
+    int         codeLineInd;
 };
 
 TableOfLabelsErrors constructTableOfLabels();

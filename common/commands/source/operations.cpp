@@ -1,5 +1,6 @@
 #include <math.h>
 
+#include "logLib.hpp"
 #include "../include/operations.hpp"
 
 typedef processor_data_type (twoArgsOperFuncPtr)(processor_data_type a, processor_data_type b);

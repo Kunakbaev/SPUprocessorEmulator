@@ -12,6 +12,7 @@ enum ProcessorErrors {
     PROCESSOR_ERROR_STACK_ERROR                           = 5,                  // error occured in stack
     PROCESSOR_ERROR_BAD_INS_POINTER                       = 6,
     PROCESSOR_ERROR_COMMANDS_ERROR                        = 7,
+    PROCESSOR_ERROR_RAM_ERROR                             = 8,
 };
 
 const char* getProcessorErrorMessage(ProcessorErrors error);

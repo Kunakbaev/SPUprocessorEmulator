@@ -13,6 +13,8 @@ const char* getProcessorErrorMessage(ProcessorErrors error) {
             return "Processor error: couldn't reallocate memory.\n";
         case PROCESSOR_ERROR_COULDNT_OPEN_FILE:
             return "Processor error: couldn't open file.\n";
+        case PROCESSOR_ERROR_RAM_ERROR:
+            return "Processor error: error occured in ram sublib.\n";
 
         default:
             return "Unknown error.\n";

@@ -7,7 +7,6 @@
 
 
 
-
 #define IF_ARG_NULL_RETURN(arg) \
     COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT, getAssemblerErrorMessage)
 
@@ -20,22 +19,36 @@
 
 
 
-const size_t FILE_BUFFER_SIZE      = 1 << 12;
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
-const size_t MAX_NUM_OF_WORDS      = 1 << 10;
-const char   COMMENT_BEGIN_CHAR    = ';';
+const char   COMMENT_BEGIN_CHAR    = ';'; // maybe make it assembler arg
+const size_t MAX_LEN_OF_CODE       = 1 << 10;
 
 char* fileLineBuffer;
-char* fileBuffer;
-const char** words;
 
-AssemblerErrors constructAssembler() {
+AssemblerErrors constructAssembler(Assembler* assembler,
+                                   const char* sourceFileName,
+                                   const char* destFileName) {
+    IF_ARG_NULL_RETURN(assembler);
+
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
 
+    *assembler = {};
+    assembler->instructionPointer = 0;
+    assembler->lines              = NULL;
+    assembler->sourceFileName     = sourceFileName;
+    assembler->destFileName       = destFileName;
+    assembler->programCode        = (uint8_t*)calloc(MAX_LEN_OF_CODE, sizeof(uint8_t));
+    IF_NOT_COND_RETURN(assembler->programCode != NULL,
+                       ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
+
+
+
     return ASSEMBLER_STATUS_OK;
 }
+
+// FIXME: Хочется чтобы функции были сверху вниз по важности.
 
 static AssemblerErrors getFileSize(FILE* file, size_t* fileSize) {
     IF_ARG_NULL_RETURN(file);
@@ -53,6 +66,7 @@ static AssemblerErrors getFileSize(FILE* file, size_t* fileSize) {
     return ASSEMBLER_STATUS_OK;
 }
 
+// deletes assebmly comment from line (all that goes after ; symbol)
 static AssemblerErrors clearCodeAfterComment(char* line) {
     IF_ARG_NULL_RETURN(line);
 
@@ -70,169 +84,273 @@ static AssemblerErrors clearCodeAfterComment(char* line) {
     return ASSEMBLER_STATUS_OK;
 }
 
-static AssemblerErrors argToNumber(const char* arg, int* number, int* mask) {
+// depending on what was in arg string, saves found int to either numArg or regArg
+static AssemblerErrors argsToNumber(const char* arg, int* numArg, int* regArg, int* mask) {
     IF_ARG_NULL_RETURN(arg);
     IF_ARG_NULL_RETURN(mask);
 
-    // TODO: rename consts
-    *number = -1;
-    CommandErrors error = findRegName(arg, number);
+    *regArg = -1;
+    // checking if arg is register name
+    CommandErrors error = findRegName(arg, regArg);
     if (error != COMMANDS_STATUS_OK) {
         LOG_ERROR(getCommandsErrorMessage(error));
         return ASSEMBLER_ERROR_COMMAND_ERROR;
     }
 
-    if (*number != -1) {
-        *mask |= 2; // this is register name
+    if (*regArg != -1) {
+        *mask |= HAS_REG_ARG; // this is register nameg
+        // FIXME: magic numbers FIXME:
     } else {
-        *mask |= 1; // this is const number
+        *mask |= HAS_NUM_ARG; // this is const number
         // TODO: what to do with long double?
-        *number = atoi(arg);
+        *numArg = atoi(arg); // FIXME: strtol
     }
 
     return ASSEMBLER_STATUS_OK;
 }
 
-static AssemblerErrors getArgumentMask(char* arg, int* mask, int* first, int* second) {
+// ASK: is it ok? no error check?
+// if we have ram argument, then we trim argument and set according bit in mask
+static void tryRamArg(char** arg, int* mask) {
+    assert(arg  != NULL);
+    assert(*arg != NULL);
+    assert(mask != NULL);
+
+    size_t argLen = strlen(*arg);
+    if ((*arg)[0] != '[') return;
+
+    // in case we found pair of [] brackets
+    assert((*arg)[argLen - 1] == ']');
+    (*arg)[argLen - 1] = '\0';
+    ++(*arg);
+    *mask |= HAS_RAM_ARG; // this is RAM argument
+}
+
+// if returns true, than 2 args were successfully found, otherwise returns false
+static bool trySumOfArgs(char* arg, int* mask, int* numArg, int* regArg) {
+    assert(arg    != NULL);
+    assert(numArg != NULL);
+    assert(regArg != NULL);
+
+    char* delimPtr = strchr(arg, '+');
+    if (delimPtr == NULL)
+        return false;
+
+    *delimPtr = '\0';
+    argsToNumber(arg,          numArg, regArg, mask);
+    argsToNumber(delimPtr + 1, numArg, regArg, mask);
+    *delimPtr = '+'; // arg is not changed
+
+    return true;
+}
+
+static AssemblerErrors getArgumentMask(char* arg, int* mask, int* numArg, int* regArg) {
     IF_ARG_NULL_RETURN(arg);
 
-    size_t argLen = strlen(arg);
-    LOG_DEBUG_VARS(argLen, arg);
-    if (arg[0] == '[') {
-        arg[argLen - 1] = '\0';
-        ++arg; // ASK: is this ok?
-        argLen -= 2;
-        *mask |= 4; // this is RAM argument
-    }
+    tryRamArg(&arg, mask);
+    // LOG_DEBUG_VARS(arg, mask);
+    if (trySumOfArgs(arg, mask, numArg, regArg))
+        return ASSEMBLER_STATUS_OK;
 
-    *first  = -1;
-    *second = -1;
-    char* delimPtr = strchr(arg, '+');
-    if (delimPtr == NULL) { // not a complex function
-        IF_ERR_RETURN(argToNumber(arg, first, mask)); // ASK: is this ok?
-    } else {
-        *delimPtr = '\0';
-        IF_ERR_RETURN(argToNumber(arg,          first,  mask));
-        IF_ERR_RETURN(argToNumber(delimPtr + 1, second, mask));
+    IF_ERR_RETURN(argsToNumber(arg, numArg, regArg, mask));
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+// saves byte to programCode array and moves instructionPointer
+static AssemblerErrors addByteToProgramCodeArray(Assembler* assembler, uint8_t byte) {
+    IF_ARG_NULL_RETURN(assembler);
+    IF_NOT_COND_RETURN(assembler->instructionPointer < MAX_LEN_OF_CODE,
+                        ASSEMBLER_ERROR_INVALID_ARGUMENT); // TODO: error handler
+
+    assembler->programCode[assembler->instructionPointer++] = byte;
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+AssemblerErrors saveBytesToArray(Assembler* assembler, const uint8_t* source, size_t numOfBytes) {
+    IF_ARG_NULL_RETURN(assembler);
+    IF_ARG_NULL_RETURN(source);
+
+    for (size_t byteInd = 0; byteInd < numOfBytes; ++byteInd) {
+        uint8_t byte = source[byteInd];
+        //LOG_DEBUG_VARS(byteInd, byte);
+        IF_ERR_RETURN(addByteToProgramCodeArray(assembler, byte));
     }
 
     return ASSEMBLER_STATUS_OK;
 }
 
-static AssemblerErrors parseLineOfCode(char* lineOfCode, FILE* dest) {
-    IF_ARG_NULL_RETURN(lineOfCode);
-    IF_ARG_NULL_RETURN(dest);
+// save bytes from num (can be int or double)
+static AssemblerErrors addNumBytes(Assembler* assembler, processor_data_type num) {
+    IF_ARG_NULL_RETURN(assembler);
+    int numOfBytes = sizeof(processor_data_type);
+    //LOG_DEBUG_VARS(num, numOfBytes);
+    IF_ERR_RETURN(saveBytesToArray(assembler, (uint8_t*)&num, numOfBytes));
 
-    IF_ERR_RETURN(clearCodeAfterComment(lineOfCode));
+    return ASSEMBLER_STATUS_OK;
+}
+
+// returns ptr to char* ptr to a begining of args in lineOfCode, if NULL is returned, than no args were found
+static char* getCommandArgsPtrAndSepCommandName(char* lineOfCode) {
+    assert(lineOfCode != NULL);
 
     char* delimPtr = strchr(lineOfCode, ' ');
-    size_t lineOfCodeLen = strlen(lineOfCode);
-    lineOfCode[lineOfCodeLen - 1] = '\0';
     if (delimPtr != NULL) { // command has arguments
         *delimPtr = '\0';
+        return delimPtr + 1; // FIXME: add check that space is not last char
     }
 
-    char* commandName = lineOfCode;
+    return NULL;
+}
+
+// considers that lineOfCode already has been parsed, so prefix is command name and then goes \0
+static AssemblerErrors getCommandIndex(const char* lineOfCode, int* commandIndex) {
+    IF_ARG_NULL_RETURN(commandIndex);
+
     CommandStruct command = {};
-    CommandErrors error = getCommandByName(commandName, &command);
+    CommandErrors error = getCommandByName(lineOfCode, &command);
     if (error != COMMANDS_STATUS_OK) {
-        LOG_DEBUG(getCommandsErrorMessage(error));
+        LOG_ERROR(getCommandsErrorMessage(error));
         return ASSEMBLER_ERROR_COMMAND_ERROR;
     }
 
-    fprintf(dest, "%d\n", command.commandIndex);
-    if (delimPtr == NULL)
+    *commandIndex = command.commandIndex;
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+// string is char*, however we don't wanna change it, so before return, we have to roll back to inital state
+static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
+    // we have 2 passes when we look at the code lines, so we don't wanna change them
+    // FIXME: calloc каждый раз - кринж!
+    // 1) Всё таки менять строки
+    // 2) Хотя бы делать calloc один раз
+
+    IF_ARG_NULL_RETURN(lineOfCode);
+
+    int commandIndex = -1;
+    char* argPtr = getCommandArgsPtrAndSepCommandName(lineOfCode);
+    IF_ERR_RETURN(getCommandIndex(lineOfCode, &commandIndex));
+    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, commandIndex));
+
+    if (argPtr == NULL)
         return ASSEMBLER_STATUS_OK;
 
-    int mask  = 0;
-    int first = -1, second = -1;
+    // WTF???
+    int mask   = 0;
+    int numArg = -1,
+        regArg = -1;
 
-    IF_ERR_RETURN(getArgumentMask(delimPtr + 1, &mask, &first, &second));
-    LOG_DEBUG_VARS(lineOfCode, delimPtr + 1, mask, first, second);
+    IF_ERR_RETURN(getArgumentMask(argPtr, &mask, &numArg, &regArg));
+    // LOG_DEBUG_VARS(lineOfCode, argPtr, mask, numArg, regArg);
 
-    fprintf(dest, "%d\n", mask);
-    if (first  != -1)
-        fprintf(dest, "%d\n", first);
-    if (second != -1)
-        fprintf(dest, "%d\n", second);
+    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, mask));
+    // WARNING: first we output const and then register
+    if (numArg  != -1)
+        IF_ERR_RETURN(addNumBytes(assembler, numArg));
+    if (regArg != -1)
+        IF_ERR_RETURN(addByteToProgramCodeArray(assembler, regArg));
+
+    // ASK: is this ok?
+    *(argPtr - 1) = ' '; // returning string to initial state
+    //lineOfCode = strcat(lineOfCode, argPtr);
+
+    LOG_DEBUG_VARS(lineOfCode);
 
     return ASSEMBLER_STATUS_OK;
 }
 
-static AssemblerErrors readCommandsFromFileToArray(FILE* source, FILE* dest) {
+//                     FIXME: getNLinesInFile
+static AssemblerErrors getNumOfLinesInFile(FILE* source, size_t* numOfLines) {
     IF_ARG_NULL_RETURN(source);
-    IF_ARG_NULL_RETURN(dest);
+    IF_ARG_NULL_RETURN(numOfLines);
 
+    *numOfLines = 0;
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, source)) {
-        LOG_DEBUG_VARS(fileLineBuffer);
-
-        parseLineOfCode(fileLineBuffer, dest);
+        // LOG_DEBUG_VARS(fileLineBuffer);
+        ++(*numOfLines);
     }
-
-    // counting num of words is too messy
-//     words = (const char**)calloc(MAX_NUM_OF_WORDS, sizeof(const char*));
-//     IF_NOT_COND_RETURN(words != NULL, ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
-//
-//     size_t sizeOfFile = 0;
-//     AssemblerErrors error = getFileSize(source, &sizeOfFile);
-//     IF_ERR_RETURN(error);
-//
-//     fileBuffer = (char*)calloc(sizeOfFile + 1, sizeof(char));
-//     IF_NOT_COND_RETURN(fileBuffer != NULL,
-//                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
-//
-//     fread(fileBuffer, sizeof(char), sizeOfFile, source);
-//     const char* ptr = fileBuffer;
-//
-//     size_t prevInd = 0;
-//     size_t wordInd = 0;
-//     for (size_t charInd = 0; charInd < sizeOfFile; ++charInd) {
-//         char ch = fileBuffer[charInd];
-//         if (ch != ' ' && ch != '\t')
-//             continue;
-//
-//         for (size_t word = 0; word < wordInd; ++word) {
-//             LOG_DEBUG_VARS(word, words[word]);
-//         }
-//
-//         words[wordInd] = fileBuffer + prevInd;
-//         fileBuffer[charInd] = '\0';
-//         prevInd = charInd + 1;
-//
-//         if (ch == '\n') {
-//             parseLineOfCode(wordInd, source, dest);
-//         }
-//
-//         ++wordInd;
-//     }
+    rewind(source);
 
     return ASSEMBLER_STATUS_OK;
 }
 
-AssemblerErrors compileProgram(const char* sourceFileName,
-                               const char*   destFileName) {
-    IF_ARG_NULL_RETURN(sourceFileName);
+// TODO: написать комментарий: почему так а не 2 функции
+static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) {
+    IF_ARG_NULL_RETURN(assembler);
 
-    FILE* sourceFile = fopen(sourceFileName, "r");
-    IF_NOT_COND_RETURN(sourceFile != NULL,
+    FILE* source = fopen(assembler->sourceFileName, "r");
+    IF_NOT_COND_RETURN(source != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
-    LOG_DEBUG("opened source file");
-    FILE* destFile   = fopen(destFileName, "w"); // FIXME: close first file
-    if (destFile == NULL) {
-        fclose(sourceFile); // hope that it will close
-        LOG_ERROR(getAssemblerErrorMessage(ASSEMBLER_ERROR_COULDNT_OPEN_FILE));
-        return ASSEMBLER_ERROR_COULDNT_OPEN_FILE;
+    assembler->numOfLines = 0;
+    IF_ERR_RETURN(getNumOfLinesInFile(source, &assembler->numOfLines));
+
+    // FIXME: +1 because i'm too afraid
+    assembler->lines = (char**)calloc(assembler->numOfLines + 1, sizeof(char*));
+    IF_NOT_COND_RETURN(assembler->lines != NULL,
+                       ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
+
+    size_t lineInd = 0;
+    while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, source)) {
+        LOG_DEBUG_VARS(fileLineBuffer);
+        IF_ERR_RETURN(clearCodeAfterComment(fileLineBuffer));
+        size_t lineOfCodeLen = strlen(fileLineBuffer);
+        fileLineBuffer[lineOfCodeLen - 1] = '\0'; // remove \n
+        assembler->lines[lineInd++] = fileLineBuffer;
     }
 
-    LOG_DEBUG("opened dest file");
-    AssemblerErrors error = readCommandsFromFileToArray(sourceFile, destFile);
-    IF_ERR_RETURN(error); // FIXME: close files
+    // source file is no longer useful
+    fclose(source);
 
     return ASSEMBLER_STATUS_OK;
 }
 
-AssemblerErrors destructAssembler() {
+AssemblerErrors processCodeLines(Assembler* assembler) {
+    IF_ARG_NULL_RETURN(assembler);
+
+    assembler->instructionPointer = 0;
+    for (size_t lineInd = 0; lineInd < assembler->numOfLines; ++lineInd) {
+        IF_ERR_RETURN(parseLineOfCode(assembler, assembler->lines[lineInd]));
+    }
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
+    IF_ARG_NULL_RETURN(assembler);
+
+    FILE* destFile = fopen(assembler->destFileName, "w");
+    IF_NOT_COND_RETURN(destFile != NULL,
+                       ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
+
+    // TODO: save to binary file
+    for (size_t lineInd = 0; lineInd < assembler->instructionPointer; ++lineInd) {
+        fprintf(destFile, "%d\n", assembler->programCode[lineInd]);
+    }
+    fclose(destFile);
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+AssemblerErrors compileProgram(Assembler* assembler) {
+    IF_ARG_NULL_RETURN(assembler);
+
+    // FIXME: ну ты понял ))
+    IF_ERR_RETURN(readLinesFromFileAndRemoveComments(assembler));
+    IF_ERR_RETURN(processCodeLines(assembler));
+    IF_ERR_RETURN(saveProgramCodeToDestFile(assembler));
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+AssemblerErrors destructAssembler(Assembler* assembler) {
     FREE(fileLineBuffer);
+    FREE(assembler->programCode);
+    FREE(assembler->lines);
+
+    assembler = {}; // clear struct values just in case
+
     return ASSEMBLER_STATUS_OK;
 }

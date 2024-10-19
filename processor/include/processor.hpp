@@ -3,22 +3,18 @@
 
 #include "../../external/StackStruct/include/stackLib.hpp"
 #include "processorErrorsHandler.hpp"
-
-const int NUM_OF_REGISTERS         = 4;
-const size_t SIZE_OF_REGISTER      = 1;
-typedef int processor_data_type;
-
-// FIXME:
-const size_t SIZE_OF_NORMAL_VAR    = sizeof(processor_data_type);
-const int PROCESSOR_DATA_TYPE_SIZE = sizeof(processor_data_type);
+#include "../../common/include/processorSettings.hpp"
+#include "ram.hpp"
 
 struct Processor {
-    size_t   numberOfInstructions;
-    size_t   instructionPointer;
+    size_t               numberOfInstructions;
+    size_t               instructionPointer;
     // ASK: does it need to be const? And if so, how to implement it?
-    uint8_t* programCode; // WARNING: be careful with small data type
-    Stack    stackOfVars;
+    // FIXME: rewrite to const
+    uint8_t*             programCode; // WARNING: be careful with small data type
+    Stack                stackOfVars;
     processor_data_type* registers;
+    struct RamStruct     ram;
 };
 
 ProcessorErrors ProcessorConstructor(Processor* processor);

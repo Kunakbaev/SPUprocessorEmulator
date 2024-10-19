@@ -39,13 +39,17 @@ int main() {
 
 //    return 0;
 
+    Assembler assembler = {};
     AssemblerErrors error = ASSEMBLER_STATUS_OK;
-    error = constructAssembler();
+    error = constructAssembler(&assembler,
+                               "../program.asm",
+                               "../programBinCode.txt");
     IF_MAIN_ERR_RETURN(error);
 
-    error = compileProgram("/home/rodion/Documents/Work/SPUprocessorEmulator/program.asm",
-                           "/home/rodion/Documents/Work/SPUprocessorEmulator/programBinCode.txt");
+    error = compileProgram(&assembler);
     IF_MAIN_ERR_RETURN(error);
+
+    destructAssembler(&assembler);
 
     return 0;
 }

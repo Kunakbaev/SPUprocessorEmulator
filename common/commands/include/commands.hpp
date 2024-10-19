@@ -8,12 +8,9 @@
 
 #include <cstddef>
 
-
-
 struct CommandStruct {
-    size_t commandIndex; // ASK: cringe?
+    size_t      commandIndex; // cringe? норм
     const char* commandName;
-    size_t sumSizeOfArgsInBytes = 0;
 };
 
 // enum CommandsEnum {
@@ -36,9 +33,11 @@ CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* inst
                                         size_t numberOfInstructions,
                                         Stack* stack,
                                         twoArgsOperFuncPtr operation);
-CommandErrors pushToProcessorStack(const uint8_t* programCode, size_t* instructionPointer,
-                                   size_t numberOfInstructions,
-                                   Stack* stack);
+CommandErrors executeOperationWith1Arg(const uint8_t* programCode, size_t* instructionPointer,
+                                       size_t numberOfInstructions,
+                                       Stack* stackOfVars,
+                                       oneArgOperFuncPtr operation);
+CommandErrors pushToProcessorStack(Processor* processor);
 
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result);

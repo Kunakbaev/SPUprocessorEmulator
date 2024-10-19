@@ -3,9 +3,14 @@
 #include "../include/commands.hpp"
 #include "../../include/errorsHandlerDefines.hpp"
 #include "../../../external/StackStruct/include/stackLib.hpp"
+#include "../../../processor/include/ram.hpp"
 
 #define IF_ARG_NULL_RETURN(arg) \
     COMMON_IF_ARG_NULL_RETURN(arg, COMMANDS_ERROR_INVALID_ARGUMENT, getCommandsErrorMessage)
+
+
+#define IF_ERR_RETURN(error) \
+    COMMON_IF_ERR_RETURN(error, getCommandsErrorMessage, COMMANDS_STATUS_OK)
 
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getCommandsErrorMessage)
@@ -22,9 +27,6 @@ constexpr CommandStruct COMMANDS[] = {
 };
 
 const size_t NUM_OF_COMMANDS = sizeof(COMMANDS) / sizeof(*COMMANDS); // ?????????????
-
-// ASK: it's bad to pass whole Processor struct, because it has to many fields that this function
-// doesn't need (stack of func calls, registers)
 
 // registers are numberated in one indexation, so first register name is undefined
 const char* registerNames[] = { "?", "AX", "BX", "CX", "DX" };
@@ -50,8 +52,6 @@ CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
                                      size_t numberOfInstructions) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(instructionPointer);
-    IF_NOT_COND_RETURN(*instructionPointer < numberOfInstructions,
-                       COMMANDS_ERROR_BAD_INSTR_PTR);
 
     processor_data_type num = 0;
     // dumpStackLog(stack);
@@ -66,8 +66,6 @@ CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
     printf("last in stack : %d\n", num);
     LOG_DEBUG_VARS("last in stack : ", num);
 
-    *instructionPointer += 1;
-
     return COMMANDS_STATUS_OK;
 }
 
@@ -79,8 +77,6 @@ CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* inst
     IF_ARG_NULL_RETURN(stackOfVars);
     IF_ARG_NULL_RETURN(instructionPointer);
     IF_ARG_NULL_RETURN(operation);
-    IF_NOT_COND_RETURN(*instructionPointer < numberOfInstructions,
-                       COMMANDS_ERROR_BAD_INSTR_PTR);
 
     processor_data_type number_1 = 0;
     processor_data_type number_2 = 0;
@@ -108,23 +104,19 @@ CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* inst
         return COMMANDS_ERROR_STACK_ERROR;
     }
 
-    *instructionPointer += 1;
-
     return COMMANDS_STATUS_OK;
 }
 
 // ASK: copypaste???
 
-CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* instructionPointer,
-                                        size_t numberOfInstructions,
-                                        Stack* stackOfVars,
-                                        oneArgOperFuncPtr operation) {
+CommandErrors executeOperationWith1Arg(const uint8_t* programCode, size_t* instructionPointer,
+                                       size_t numberOfInstructions,
+                                       Stack* stackOfVars,
+                                       oneArgOperFuncPtr operation) {
     IF_ARG_NULL_RETURN(programCode);
     IF_ARG_NULL_RETURN(stackOfVars);
     IF_ARG_NULL_RETURN(instructionPointer);
     IF_ARG_NULL_RETURN(operation);
-    IF_NOT_COND_RETURN(*instructionPointer < numberOfInstructions,
-                       COMMANDS_ERROR_BAD_INSTR_PTR);
 
     processor_data_type argument = 0;
     // TODO: define for checking error from separate lib or function
@@ -145,32 +137,78 @@ CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* inst
         return COMMANDS_ERROR_STACK_ERROR;
     }
 
-    *instructionPointer += 1;
+    return COMMANDS_STATUS_OK;
+}
+
+static CommandErrors getArgsFromCodeForPushOrPop(Processor* processor, processor_data_type* arg) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor->programCode);
+    IF_ARG_NULL_RETURN(processor->registers);
+    IF_ARG_NULL_RETURN(arg);
+
+    uint8_t* code              = processor->programCode;
+    size_t* instructionPointer = &processor->instructionPointer;
+
+    static processor_data_type result = 0;
+    // instruction pointer points to a mask, cause we already looked at what type of command we are dealing with
+    int mask = code[*instructionPointer];
+    ++(*instructionPointer);
+    if (mask & 1) {
+        arg = (processor_data_type*)(&code[*instructionPointer]);
+        (*instructionPointer) += sizeof(processor_data_type);
+    }
+    if (mask & 2) {
+        // TODO: check that this works
+        processor_data_type* num = &processor->registers[code[*instructionPointer]];
+        if (mask & 1) {
+            result = *arg + *num;
+            arg    = &result;
+        } else {
+            arg    = num;
+        }
+        ++(*instructionPointer);
+    }
+    if (mask & 4) {
+        // WARNING: bad cast, from processor data type to size_t
+        size_t* typ = (size_t*)arg;
+        // processor->ram.memory[10];
+        // Errors error = getRamVarByIndex(&processor->ram, *typ, arg);
+        // if (error != PROCESSOR_STATUS_OK) {
+        //     return COMMANDS_ERROR_RAM;
+        // }
+    }
 
     return COMMANDS_STATUS_OK;
 }
 
-CommandErrors pushToProcessorStack(const uint8_t* programCode, size_t* instructionPointer,
-                                   size_t numberOfInstructions,
-                                   Stack* stackOfVars) {
-    IF_ARG_NULL_RETURN(programCode);
+CommandErrors pushToProcessorStack(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor->programCode);
+
+    uint8_t* code              = processor->programCode;
+    size_t* instructionPointer = &processor->instructionPointer;
     IF_ARG_NULL_RETURN(instructionPointer);
-    IF_ARG_NULL_RETURN(stackOfVars);
-    IF_NOT_COND_RETURN(*instructionPointer + 2 < numberOfInstructions,
+
+    IF_NOT_COND_RETURN(processor->instructionPointer < processor->numberOfInstructions,
                        COMMANDS_ERROR_BAD_INSTR_PTR);
 
-    processor_data_type number = programCode[*instructionPointer + 1];
-    Errors error = pushElementToStack(stackOfVars, &number);
+    int mask = code[*instructionPointer];
+    ++(*instructionPointer);
+
+    processor_data_type* arg = NULL;
+    IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, arg));
+    LOG_DEBUG_VARS(arg);
+
+    Errors error = pushElementToStack(&processor->stackOfVars, arg);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return COMMANDS_ERROR_STACK_ERROR;
     }
-    LOG_DEBUG_VARS(stackOfVars->numberOfElements);
-
-    *instructionPointer += 2;
 
     return COMMANDS_STATUS_OK;
 }
+
+// FIXME: move to processor folder
 
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
     IF_ARG_NULL_RETURN(result);

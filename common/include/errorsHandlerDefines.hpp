@@ -8,10 +8,13 @@
 
 // ASK: how to check if error == OK if all enums are different type
 // log and return happens only if error realy occured (error != STATUS_OK)
-#define COMMON_IF_ERR_RETURN(error, getErrorMessageFunc, OK_STATUS)                                        \
+
+// FIXME: bruh, auto is C++ feature, can pass error type to define, no big deal
+#define COMMON_IF_ERR_RETURN(errorTmp, getErrorMessageFunc, OK_STATUS)                                        \
     do {                                                            \
+        auto error = errorTmp;                                           \
         if (error != OK_STATUS) {                                   \
-            LOG_ERROR(getErrorMessageFunc(error));                      \
+            LOG_ERROR(getErrorMessageFunc(error));                  \
             assert(error != OK_STATUS);                             \
             return error;                                           \
         }                                                           \

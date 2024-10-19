@@ -25,29 +25,11 @@ const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
-const char* registerNames[] = { "AX", "BX", "CX", "DX" };
-
-const size_t NUM_OF_REGS = sizeof(registerNames) / sizeof(*registerNames);
-
-ProcessorErrors findRegName(const char* name, int* ind) {
-    IF_ARG_NULL_RETURN(name);
-    IF_ARG_NULL_RETURN(ind);
-
-    *ind = -1;
-    for (size_t regInd = 0; regInd < NUM_OF_REGS; ++regInd) {
-        if (strcmp(name, registerNames[regInd]) == 0) {
-            *ind = regInd;
-            return PROCESSOR_STATUS_OK;
-        }
-    }
-
-    return PROCESSOR_STATUS_OK;
-}
-
 ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    *processor = {};
+    *processor = {}; // name constants ~~~~~|
+    // FIXME: const int initialCapacity = 8;
     constructStack(&processor->stackOfVars, 8, PROCESSOR_DATA_TYPE_SIZE);
     processor->instructionPointer   = 0;
     processor->numberOfInstructions = 0;
@@ -59,7 +41,13 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
 
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
-                       PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
+                       PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR); // free()
+
+    RamStructErrors error = pleaseGiveMeRAM(&processor->ram);
+    if (error != RAM_STATUS_OK) {
+        LOG_ERROR(getRamErrorMessage(error)); // free() free()
+        return PROCESSOR_ERROR_RAM_ERROR;
+    }
 
     return PROCESSOR_STATUS_OK;
 }
@@ -89,6 +77,7 @@ static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, i
 
     int lineIndex = 0;
     rewind(file);
+    // line is considered to be already processed, so it's just a single number
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
         int number = atoi(fileLineBuffer); // FIXME: no error check
         array[lineIndex] = number;
@@ -138,8 +127,7 @@ ProcessorErrors pushCommandFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     LOG_DEBUG("push");
-    CommandErrors err = pushToProcessorStack(processor->programCode, &processor->instructionPointer,
-                                             processor->numberOfInstructions, &processor->stackOfVars);
+    CommandErrors err = pushToProcessorStack(processor);
     if (err != COMMANDS_STATUS_OK) {
         LOG_ERROR(getCommandsErrorMessage(err));
         return PROCESSOR_ERROR_COMMANDS_ERROR;
@@ -198,9 +186,32 @@ OneArgOperationsCommandsStruct oneArgCommandsArr[] = {
     {"abs", absOperation},
 };
 
-const size_t NORMAL_COMMANDS_ARR_SIZE   = sizeof(normalCommandsArr)  / sizeof(*normalCommandsArr);
+const size_t   NORMAL_COMMANDS_ARR_SIZE = sizeof( normalCommandsArr) / sizeof(* normalCommandsArr);
 const size_t TWO_ARGS_COMMANDS_ARR_SIZE = sizeof(twoArgsCommandsArr) / sizeof(*twoArgsCommandsArr);
-const size_t ONE_ARG_COMMANDS_ARR_SIZE  = sizeof(oneArgCommandsArr)  / sizeof(*oneArgCommandsArr);
+const size_t  ONE_ARG_COMMANDS_ARR_SIZE = sizeof( oneArgCommandsArr) / sizeof(* oneArgCommandsArr);
+
+// static ProcessorErrors checkVariousCommands(Processor* processor, const char* commandName,
+//                                             const void* commandsArrPtr, size_t arrSize) {
+//     uint8_t* commandsArr = (uint8_t*)commandsArrPtr;
+//
+//     IF_ARG_NULL_RETURN(processor);
+//     IF_ARG_NULL_RETURN(commandName);
+//     IF_ARG_NULL_RETURN(commandsArr);
+//
+//     // all 3 structs are of the same size
+//     int sizOfStruct = sizeof(OneArgOperationsCommandsStruct);
+//     for (size_t commandIndex = 0; commandIndex < NORMAL_COMMANDS_ARR_SIZE; ++commandIndex) {
+//         const char* name = (const char*)(commandsArr[commandIndex * sizOfStruct]);
+//         if (strcmp(name, commandName) != 0)
+//             continue;
+//
+//         const char* name = (const char*)(commandsArr[commandIndex * sizOfStruct]);
+//         ProcessorErrors error = (*normalCommandsArr[commandIndex].funcPtr)(processor);
+//         IF_ERR_RETURN(error);
+//     }
+//
+//     return PROCESSOR_STATUS_OK;
+// }
 
 static ProcessorErrors checkNormalCommands(Processor* processor, const char* commandName) {
     IF_ARG_NULL_RETURN(processor);
@@ -210,6 +221,7 @@ static ProcessorErrors checkNormalCommands(Processor* processor, const char* com
         if (strcmp(normalCommandsArr[commandIndex].commandName, commandName) != 0)
             continue;
 
+        LOG_DEBUG_VARS(commandName, commandIndex);
         ProcessorErrors error = (*normalCommandsArr[commandIndex].funcPtr)(processor);
         IF_ERR_RETURN(error);
     }
@@ -217,7 +229,7 @@ static ProcessorErrors checkNormalCommands(Processor* processor, const char* com
     return PROCESSOR_STATUS_OK;
 }
 
-// ASK: is this copypaste
+// ASK: is this copypaste? Yes, How to remove copypaste?
 
 ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* commandName) {
     IF_ARG_NULL_RETURN(processor);
@@ -239,7 +251,7 @@ ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* comma
     return PROCESSOR_STATUS_OK;
 }
 
-ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* commandName) {
+ProcessorErrors checkCommandsWithOneArg(Processor* processor, const char* commandName) {
     IF_ARG_NULL_RETURN(processor);
     IF_ARG_NULL_RETURN(commandName);
 
@@ -249,7 +261,7 @@ ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* comma
 
         CommandErrors error = executeOperationWith1Arg(processor->programCode, &processor->instructionPointer,
                                                        processor->numberOfInstructions, &processor->stackOfVars,
-                                                       twoArgsCommandsArr[commandIndex].funcPtr);
+                                                       oneArgCommandsArr[commandIndex].funcPtr);
         if (error != NULL) {
             LOG_ERROR(getCommandsErrorMessage(error));
             return PROCESSOR_ERROR_COMMANDS_ERROR;
@@ -263,8 +275,12 @@ ProcessorErrors runProgramBinary(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     processor->instructionPointer = 0;
+
+    // reinvented while =)
     for (; processor->instructionPointer < processor->numberOfInstructions;) {
         int commandIndex = processor->programCode[processor->instructionPointer];
+
+        ++processor->instructionPointer;
         LOG_DEBUG_VARS(processor->instructionPointer, commandIndex);
 
         CommandStruct command = {};
@@ -276,58 +292,11 @@ ProcessorErrors runProgramBinary(Processor* processor) {
             return PROCESSOR_ERROR_COMMANDS_ERROR;
         }
 
-        // ASK: we don't have switch, so what to do? Use hashing or just ifs?
         CommandErrors err = COMMANDS_STATUS_OK;
-        // end of 'program'
-        if (strcmp(command.commandName, "halt") == 0) {
-            break;
-        }
 
-        if (strcmp(command.commandName, "push") == 0) {
-            LOG_DEBUG("push");
-            err = pushToProcessorStack(processor->programCode, &processor->instructionPointer,
-                                       processor->numberOfInstructions, &processor->stackOfVars);
-            if (err != COMMANDS_STATUS_OK) {
-                LOG_ERROR(getCommandsErrorMessage(err));
-                return PROCESSOR_ERROR_COMMANDS_ERROR;
-            }
-            continue;
-        }
-
-        if (strcmp(command.commandName, "out") == 0) {
-            LOG_DEBUG("out");
-            err = popAndPrintLastInStack(&(processor->stackOfVars), &processor->instructionPointer,
-                                         processor->numberOfInstructions);
-            if (err != COMMANDS_STATUS_OK) {
-                LOG_ERROR(getCommandsErrorMessage(err));
-                return PROCESSOR_ERROR_COMMANDS_ERROR;
-            }
-            continue;
-        }
-
-        // error = (*command.actionFunc)(processor);
-        // IF_ERR_RETURN(error);
-
-        // TODO: add operation ptr to commands
-
-        twoArgsOperFuncPtr* funcPtr2Args = NULL;
-        // ASK: smells like shit
-        if (strcmp(command.commandName, "add") == 0) funcPtr2Args = add2nums;
-        if (strcmp(command.commandName, "sub") == 0) funcPtr2Args = sub2nums;
-        if (strcmp(command.commandName, "mul") == 0) funcPtr2Args = mul2nums;
-        if (strcmp(command.commandName, "div") == 0) funcPtr2Args = div2nums;
-
-        // FIXME: foreach structs: name of command
-        if (funcPtr2Args != NULL) {
-            LOG_DEBUG("two args operation");
-            err = executeOperationWith2Args(processor->programCode, &processor->instructionPointer,
-                                            processor->numberOfInstructions, &processor->stackOfVars,
-                                            funcPtr2Args);
-            if (err != COMMANDS_STATUS_OK) {
-                LOG_ERROR(getCommandsErrorMessage(err));
-                return PROCESSOR_ERROR_COMMANDS_ERROR;
-            }
-        }
+        IF_ERR_RETURN(checkNormalCommands     (processor, command.commandName));
+        IF_ERR_RETURN(checkCommandsWithTwoArgs(processor, command.commandName));
+        IF_ERR_RETURN(checkCommandsWithOneArg (processor, command.commandName));
 
         LOG_DEBUG_VARS(processor->instructionPointer, processor->numberOfInstructions);
     }
