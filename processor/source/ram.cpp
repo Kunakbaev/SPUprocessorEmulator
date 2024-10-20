@@ -13,7 +13,8 @@
     COMMON_IF_NOT_COND_RETURN(condition, error, getRamErrorMessage)
 
 const size_t      MAX_MEMORY_SIZE       = 100;
-const long double RAM_OPERATION_LATENCY = 1000; // time to sleep in ms
+const long double RAM_OPERATION_LATENCY = 1.4; // time to sleep in second
+const char*       SLOW_RAM_MESSAGE      = "RAM is too slow";
 
 // Тарань меня полностью
 RamStructErrors pleaseGiveMeRAM(RamStruct* ram) {
@@ -28,19 +29,23 @@ RamStructErrors pleaseGiveMeRAM(RamStruct* ram) {
     return RAM_STATUS_OK;
 }
 
-RamStructErrors getRamVarByIndex(const RamStruct* ram, size_t index, processor_data_type* result) {
+RamStructErrors getRamVarByIndex(const RamStruct* ram, size_t index, processor_data_type** result) {
     IF_ARG_NULL_RETURN(ram);
     IF_ARG_NULL_RETURN(result);
+    IF_ARG_NULL_RETURN(*result);
     IF_ARG_NULL_RETURN(ram->memory);
     IF_NOT_COND_RETURN(index < MAX_MEMORY_SIZE,
                        RAM_ERROR_BAD_VAR_INDEX);
 
 //#ifndef NDEBUG
+    LOG_DEBUG(SLOW_RAM_MESSAGE);
     sleep(RAM_OPERATION_LATENCY);
 //#endif
     //*result = ram->memory[index];
     // WARNING:
-    result = &ram->memory[index];
+    LOG_DEBUG_VARS(ram->memory[4], ram->memory[5], ram->memory[6]);
+    LOG_DEBUG_VARS(index);
+    *result = &ram->memory[index];
 
     return RAM_STATUS_OK;
 }
@@ -52,6 +57,7 @@ RamStructErrors setRamVarByIndex(const RamStruct* ram, size_t index, processor_d
                        RAM_ERROR_BAD_VAR_INDEX);
 
 //#ifndef NDEBUG
+    LOG_DEBUG("RAM is too slow");
     sleep(RAM_OPERATION_LATENCY);
 //#endif
     ram->memory[index] = value;

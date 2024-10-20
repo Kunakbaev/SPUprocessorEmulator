@@ -2,7 +2,7 @@
 #define COMMON_COMMANDS_SOURCE_OPERATIONS_CPP
 
 // #include "../../../processor/include/processor.hpp"
-#include "../../include/processorSettings.hpp"
+#include "../../common/include/processorSettings.hpp"
 
 typedef processor_data_type (twoArgsOperFuncPtr)(processor_data_type a, processor_data_type b);
 typedef processor_data_type (oneArgOperFuncPtr)(processor_data_type a);

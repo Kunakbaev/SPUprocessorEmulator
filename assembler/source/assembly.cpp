@@ -89,19 +89,20 @@ static AssemblerErrors argsToNumber(const char* arg, int* numArg, int* regArg, i
     IF_ARG_NULL_RETURN(arg);
     IF_ARG_NULL_RETURN(mask);
 
-    *regArg = -1;
     // checking if arg is register name
-    CommandErrors error = findRegName(arg, regArg);
+    int tmpNum = -1;
+    CommandErrors error = findRegName(arg, &tmpNum);
     if (error != COMMANDS_STATUS_OK) {
         LOG_ERROR(getCommandsErrorMessage(error));
         return ASSEMBLER_ERROR_COMMAND_ERROR;
     }
 
-    if (*regArg != -1) {
-        *mask |= HAS_REG_ARG; // this is register nameg
-        // FIXME: magic numbers FIXME:
+    LOG_DEBUG_VARS(arg, *regArg);
+    if (tmpNum != -1) {
+        *mask  |= HAS_REG_ARG; // this is register nameg
+        *regArg = tmpNum;
     } else {
-        *mask |= HAS_NUM_ARG; // this is const number
+        *mask  |= HAS_NUM_ARG; // this is const number
         // TODO: what to do with long double?
         *numArg = atoi(arg); // FIXME: strtol
     }
@@ -136,6 +137,7 @@ static bool trySumOfArgs(char* arg, int* mask, int* numArg, int* regArg) {
     if (delimPtr == NULL)
         return false;
 
+    LOG_DEBUG_VARS(arg);
     *delimPtr = '\0';
     argsToNumber(arg,          numArg, regArg, mask);
     argsToNumber(delimPtr + 1, numArg, regArg, mask);
@@ -247,6 +249,7 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, mask));
     // WARNING: first we output const and then register
+    LOG_DEBUG_VARS(mask, numArg, regArg);
     if (numArg  != -1)
         IF_ERR_RETURN(addNumBytes(assembler, numArg));
     if (regArg != -1)
@@ -298,11 +301,18 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
         IF_ERR_RETURN(clearCodeAfterComment(fileLineBuffer));
         size_t lineOfCodeLen = strlen(fileLineBuffer);
         fileLineBuffer[lineOfCodeLen - 1] = '\0'; // remove \n
-        assembler->lines[lineInd++] = fileLineBuffer;
+
+        LOG_DEBUG_VARS(lineOfCodeLen, fileLineBuffer);
+        assembler->lines[lineInd] = (char*)calloc(lineOfCodeLen + 1, sizeof(char));
+        IF_NOT_COND_RETURN(assembler->lines[lineInd] != NULL,
+                           ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
+        strcpy(assembler->lines[lineInd], fileLineBuffer);
+        ++lineInd;
     }
 
     // source file is no longer useful
     fclose(source);
+    LOG_DEBUG_VARS(assembler->numOfLines, assembler->lines[0], assembler->lines[1]);
 
     return ASSEMBLER_STATUS_OK;
 }

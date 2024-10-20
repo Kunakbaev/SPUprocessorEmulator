@@ -4,7 +4,6 @@
 // TODO: manage func ptr typedef more carefull
 #include "commandsErrorsHandler.hpp"
 #include "../../../processor/include/processor.hpp"
-#include "../include/operations.hpp"
 
 #include <cstddef>
 
@@ -26,18 +25,6 @@ struct CommandStruct {
 // };
 
 CommandErrors findRegName(const char* name, int* ind);
-
-CommandErrors popAndPrintLastInStack(Stack* stack, size_t* instructionPointer,
-                                     size_t numberOfInstructions);
-CommandErrors executeOperationWith2Args(const uint8_t* programCode, size_t* instructionPointer,
-                                        size_t numberOfInstructions,
-                                        Stack* stack,
-                                        twoArgsOperFuncPtr operation);
-CommandErrors executeOperationWith1Arg(const uint8_t* programCode, size_t* instructionPointer,
-                                       size_t numberOfInstructions,
-                                       Stack* stackOfVars,
-                                       oneArgOperFuncPtr operation);
-CommandErrors pushToProcessorStack(Processor* processor);
 
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result);

@@ -16,7 +16,7 @@ struct RamStruct {
 };
 
 RamStructErrors pleaseGiveMeRAM(RamStruct* ram);
-RamStructErrors getRamVarByIndex(const RamStruct* ram, size_t index, processor_data_type* result);
+RamStructErrors getRamVarByIndex(const RamStruct* ram, size_t index, processor_data_type** result);
 RamStructErrors setRamVarByIndex(const RamStruct* ram, size_t index, processor_data_type value);
 RamStructErrors drawRamMemory(const RamStruct* ram);
 const char* getRamErrorMessage(RamStructErrors error);

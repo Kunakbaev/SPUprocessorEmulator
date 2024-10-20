@@ -3,10 +3,10 @@
 #include "../../common/commands/include/commands.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
 #include "../include/processor.hpp"
-#include "../../common/commands/include/operations.hpp"
+#include "../include/operations.hpp"
+#include "../include/processorCommandsRealization.hpp"
 
 
-// ASK: is this good solution?
 
 #define IF_ARG_NULL_RETURN(arg) \
     COMMON_IF_ARG_NULL_RETURN(arg, PROCESSOR_ERROR_INVALID_ARGUMENT, getProcessorErrorMessage)
@@ -39,6 +39,7 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_NOT_COND_RETURN(processor->registers != NULL,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
 
+    // FIXME: free buffers if error
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR); // free()
@@ -62,9 +63,6 @@ static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
     while ((ch = fgetc(file)) != EOF) {
         *numOfLines += ch == CH_TO_COUNT;
     }
-    // while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file)) {
-    //
-    // }
 
     LOG_DEBUG_VARS(*numOfLines);
 
@@ -112,160 +110,39 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     return PROCESSOR_STATUS_OK;
 }
 
-// ends (finishes) 'program'
-static ProcessorErrors haltCommandFunc(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-
-    LOG_DEBUG("halt");
-    // for loop will end, because conditions is not satisfied any longer
-    processor->instructionPointer = processor->numberOfInstructions;
-
-    return PROCESSOR_STATUS_OK;
-}
-
-ProcessorErrors pushCommandFunc(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-
-    LOG_DEBUG("push");
-    CommandErrors err = pushToProcessorStack(processor);
-    if (err != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(err));
-        return PROCESSOR_ERROR_COMMANDS_ERROR;
-    }
-
-    return PROCESSOR_STATUS_OK;
-}
-
-ProcessorErrors outCommandFunc(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-
-    LOG_DEBUG("out");
-    CommandErrors err = popAndPrintLastInStack(&(processor->stackOfVars), &processor->instructionPointer,
-                                               processor->numberOfInstructions);
-    if (err != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(err));
-        return PROCESSOR_ERROR_COMMANDS_ERROR;
-    }
-
-    return PROCESSOR_STATUS_OK;
-}
-
 typedef ProcessorErrors (normalCommandFuncPtr)(Processor* processor);
 
-struct NormalCommandsStruct {
+struct ProcessorCommandsStruct {
     const char* commandName;
     normalCommandFuncPtr* funcPtr;
 };
 
-// takes 2 args from stack, pops them, calculates result, and then pushes it to stack
-// if args are registers, than they need to be firstly put into stack
-struct TwoArgsOperationsCommandsStruct {
-    const char* commandName;
-    twoArgsOperFuncPtr* funcPtr;
-};
-
-struct OneArgOperationsCommandsStruct {
-    const char* commandName;
-    oneArgOperFuncPtr* funcPtr;
-};
-
-NormalCommandsStruct normalCommandsArr[] = {
+ProcessorCommandsStruct processorCommandsArr[] = {
     {"halt", haltCommandFunc},
-    {"push", pushCommandFunc},
-    {"out",  outCommandFunc},
+    {"push", pushToProcessorStackFunc},
+    {"out",  popAndPrintLastVarInStackFunc},
+    {"add",  add2numsFunc},
+    {"pop",  popFromProcessorStackFunc},
+    {"pick", lookLastVarInVarStackFunc},
+    {"sub",  sub2numsFunc},
+    {"mul",  mul2numsFunc},
+    {"div",  div2numsFunc}
 };
 
-TwoArgsOperationsCommandsStruct twoArgsCommandsArr[] = {
-    {"add", add2nums},
-    {"sub", sub2nums},
-    {"mul", mul2nums},
-    {"div", div2nums}
-};
+const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
 
-OneArgOperationsCommandsStruct oneArgCommandsArr[] = {
-    {"abs", absOperation},
-};
-
-const size_t   NORMAL_COMMANDS_ARR_SIZE = sizeof( normalCommandsArr) / sizeof(* normalCommandsArr);
-const size_t TWO_ARGS_COMMANDS_ARR_SIZE = sizeof(twoArgsCommandsArr) / sizeof(*twoArgsCommandsArr);
-const size_t  ONE_ARG_COMMANDS_ARR_SIZE = sizeof( oneArgCommandsArr) / sizeof(* oneArgCommandsArr);
-
-// static ProcessorErrors checkVariousCommands(Processor* processor, const char* commandName,
-//                                             const void* commandsArrPtr, size_t arrSize) {
-//     uint8_t* commandsArr = (uint8_t*)commandsArrPtr;
-//
-//     IF_ARG_NULL_RETURN(processor);
-//     IF_ARG_NULL_RETURN(commandName);
-//     IF_ARG_NULL_RETURN(commandsArr);
-//
-//     // all 3 structs are of the same size
-//     int sizOfStruct = sizeof(OneArgOperationsCommandsStruct);
-//     for (size_t commandIndex = 0; commandIndex < NORMAL_COMMANDS_ARR_SIZE; ++commandIndex) {
-//         const char* name = (const char*)(commandsArr[commandIndex * sizOfStruct]);
-//         if (strcmp(name, commandName) != 0)
-//             continue;
-//
-//         const char* name = (const char*)(commandsArr[commandIndex * sizOfStruct]);
-//         ProcessorErrors error = (*normalCommandsArr[commandIndex].funcPtr)(processor);
-//         IF_ERR_RETURN(error);
-//     }
-//
-//     return PROCESSOR_STATUS_OK;
-// }
-
-static ProcessorErrors checkNormalCommands(Processor* processor, const char* commandName) {
+static ProcessorErrors checkProcessorCommands(Processor* processor, const char* commandName) {
     IF_ARG_NULL_RETURN(processor);
     IF_ARG_NULL_RETURN(commandName);
 
-    for (size_t commandIndex = 0; commandIndex < NORMAL_COMMANDS_ARR_SIZE; ++commandIndex) {
-        if (strcmp(normalCommandsArr[commandIndex].commandName, commandName) != 0)
+    for (size_t commandIndex = 0; commandIndex < PROCESSOR_COMMANDS_ARR_SIZE; ++commandIndex) {
+        if (strcmp(processorCommandsArr[commandIndex].commandName, commandName) != 0)
             continue;
 
+        LOG_DEBUG("----------------------------");
         LOG_DEBUG_VARS(commandName, commandIndex);
-        ProcessorErrors error = (*normalCommandsArr[commandIndex].funcPtr)(processor);
+        ProcessorErrors error = (*processorCommandsArr[commandIndex].funcPtr)(processor);
         IF_ERR_RETURN(error);
-    }
-
-    return PROCESSOR_STATUS_OK;
-}
-
-// ASK: is this copypaste? Yes, How to remove copypaste?
-
-ProcessorErrors checkCommandsWithTwoArgs(Processor* processor, const char* commandName) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(commandName);
-
-    for (size_t commandIndex = 0; commandIndex < TWO_ARGS_COMMANDS_ARR_SIZE; ++commandIndex) {
-        if (strcmp(twoArgsCommandsArr[commandIndex].commandName, commandName) != 0)
-            continue;
-
-        CommandErrors error = executeOperationWith2Args(processor->programCode, &processor->instructionPointer,
-                                                        processor->numberOfInstructions, &processor->stackOfVars,
-                                                        twoArgsCommandsArr[commandIndex].funcPtr);
-        if (error != NULL) {
-            LOG_ERROR(getCommandsErrorMessage(error));
-            return PROCESSOR_ERROR_COMMANDS_ERROR;
-        }
-    }
-
-    return PROCESSOR_STATUS_OK;
-}
-
-ProcessorErrors checkCommandsWithOneArg(Processor* processor, const char* commandName) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(commandName);
-
-    for (size_t commandIndex = 0; commandIndex < TWO_ARGS_COMMANDS_ARR_SIZE; ++commandIndex) {
-        if (strcmp(twoArgsCommandsArr[commandIndex].commandName, commandName) != 0)
-            continue;
-
-        CommandErrors error = executeOperationWith1Arg(processor->programCode, &processor->instructionPointer,
-                                                       processor->numberOfInstructions, &processor->stackOfVars,
-                                                       oneArgCommandsArr[commandIndex].funcPtr);
-        if (error != NULL) {
-            LOG_ERROR(getCommandsErrorMessage(error));
-            return PROCESSOR_ERROR_COMMANDS_ERROR;
-        }
     }
 
     return PROCESSOR_STATUS_OK;
@@ -277,9 +154,9 @@ ProcessorErrors runProgramBinary(Processor* processor) {
     processor->instructionPointer = 0;
 
     // reinvented while =)
-    for (; processor->instructionPointer < processor->numberOfInstructions;) {
+    LOG_DEBUG_VARS(processor->instructionPointer);
+    while (processor->instructionPointer < processor->numberOfInstructions) {
         int commandIndex = processor->programCode[processor->instructionPointer];
-
         ++processor->instructionPointer;
         LOG_DEBUG_VARS(processor->instructionPointer, commandIndex);
 
@@ -292,11 +169,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
             return PROCESSOR_ERROR_COMMANDS_ERROR;
         }
 
-        CommandErrors err = COMMANDS_STATUS_OK;
-
-        IF_ERR_RETURN(checkNormalCommands     (processor, command.commandName));
-        IF_ERR_RETURN(checkCommandsWithTwoArgs(processor, command.commandName));
-        IF_ERR_RETURN(checkCommandsWithOneArg (processor, command.commandName));
+        IF_ERR_RETURN(checkProcessorCommands(processor, command.commandName));
 
         LOG_DEBUG_VARS(processor->instructionPointer, processor->numberOfInstructions);
     }

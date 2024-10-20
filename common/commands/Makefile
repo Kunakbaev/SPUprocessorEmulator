@@ -8,6 +8,8 @@ MY_LOGLIB_NAME     := my_loglib
 SOURCE_DIR         := source
 LIB_RUN_NAME       := commands
 BUILD_DIR          := building
+STACK_EXT_LIB_DIR  := ../../external/StackStruct
+LOGGER_EXT_LIB_DIR := ../../external/LoggerLib
 
 ifeq ($(DEBUG), 0)
 	ASSERT_DEFINE = -DNDEBUG
@@ -20,10 +22,10 @@ endif
 SRC 			   := $(wildcard ./$(SOURCE_DIR)/*.cpp)
 OBJ 			   := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 
-CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
+CFLAGS += -I $(LOGGER_EXT_LIB_DIR)/include
 
 $(LIB_RUN_NAME): $(OBJ)
-	@$(CC) $^ -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOGLIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
+	@$(CC) $^ -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOGLIB_NAME) -L$(STACK_LIB_NAME) -l:stackLib.a $(CFLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
 	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)

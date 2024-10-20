@@ -11,6 +11,9 @@ LIB_RUN_NAME       := processor
 BUILD_DIR          := building
 COMMANDS_DIR	   := ../common/commands
 COMMANDS_BUILD_DIR := $(COMMANDS_DIR)/building
+STACK_EXT_LIB_DIR  := ../external/StackStruct
+LOGGER_EXT_LIB_DIR := ../external/LoggerLib
+STACK_LIB_NAME	   := stackLib.a
 
 ifeq ($(DEBUG), 0)
 	ASSERT_DEFINE = -DNDEBUG
@@ -20,17 +23,17 @@ endif
 
 # -------------------------   LIB RUN   -----------------------------
 
-SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
-OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
-COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/operations.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
+SRC 	   		   := $(wildcard ./$(SOURCE_DIR)/*.cpp)
+OBJ 	   		   := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
+COMMON_OBJ		   := $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 
-CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/LoggerLib/include
-CFLAGS += -I /home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/include
+CFLAGS += -I $(LOGGER_EXT_LIB_DIR)/include
+CFLAGS += -I $(STACK_EXT_LIB_DIR)/include
 
 $(LIB_RUN_NAME): $(OBJ)
 	@echo $(SRC)
 	@make -C $(COMMANDS_DIR)
-	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOG_LIB_NAME) -L/home/rodion/Documents/Work/SPUprocessorEmulator/external/StackStruct/ -l:stackLib.a $(CFLAGS)
+	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) -l$(MY_LOG_LIB_NAME) -L$(STACK_EXT_LIB_DIR) -l:$(STACK_LIB_NAME) $(CFLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
 	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)

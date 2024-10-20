@@ -12,11 +12,11 @@
 // FIXME: bruh, auto is C++ feature, can pass error type to define, no big deal
 #define COMMON_IF_ERR_RETURN(errorTmp, getErrorMessageFunc, OK_STATUS)                                        \
     do {                                                            \
-        auto error = errorTmp;                                           \
-        if (error != OK_STATUS) {                                   \
-            LOG_ERROR(getErrorMessageFunc(error));                  \
-            assert(error != OK_STATUS);                             \
-            return error;                                           \
+        auto bruh = errorTmp;                                           \
+        if (bruh != OK_STATUS) {                                   \
+            LOG_ERROR(getErrorMessageFunc(bruh));                  \
+            assert(bruh != OK_STATUS);                             \
+            return bruh;                                           \
         }                                                           \
     } while(0)
 
