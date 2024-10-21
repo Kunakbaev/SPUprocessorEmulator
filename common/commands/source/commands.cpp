@@ -25,14 +25,23 @@ constexpr CommandStruct COMMANDS[] = {
     {7,  "halt"},   // ends program
     {9,  "pop"},    // pop last value from stack to given register
     {10, "pick"},
+    {11, "jmp"},
+    {11, "jb"},
+    {11, "ja"},
 };
 
-const size_t NUM_OF_COMMANDS = sizeof(COMMANDS) / sizeof(*COMMANDS); // ?????????????
+// WARNING: be carefull that jump commands in this array and in COMMANDS array are same
+constexpr const char* JUMP_COMMANDS[] = {
+    "jmp", "jb", "ja"
+};
+
+const size_t NUM_OF_COMMANDS      = sizeof(COMMANDS) / sizeof(*COMMANDS);
+const size_t NUM_OF_JUMP_COMMANDS = sizeof(JUMP_COMMANDS) / sizeof(*JUMP_COMMANDS);
 
 // registers are numberated in one indexation, so first register name is undefined
 const char* registerNames[] = { "?", "AX", "BX", "CX", "DX" };
 
-const size_t NUM_OF_REGS = sizeof(registerNames) / sizeof(*registerNames) - 1;
+const size_t NUM_OF_REGS          = sizeof(registerNames) / sizeof(*registerNames) - 1;
 
 CommandErrors findRegName(const char* name, int* ind) {
     IF_ARG_NULL_RETURN(name);
@@ -42,6 +51,23 @@ CommandErrors findRegName(const char* name, int* ind) {
     for (size_t regInd = 1; regInd <= NUM_OF_REGS; ++regInd) {
         if (strcmp(name, registerNames[regInd]) == 0) {
             *ind = regInd;
+            return COMMANDS_STATUS_OK;
+        }
+    }
+
+    return COMMANDS_STATUS_OK;
+}
+
+CommandErrors isJumpCommand(const char* commandName, bool* is) {
+    IF_ARG_NULL_RETURN(commandName);
+    IF_ARG_NULL_RETURN(is);
+
+    *is = false;
+    for (size_t commandIndex = 0; commandIndex < NUM_OF_JUMP_COMMANDS; ++commandIndex) {
+        // FIXME: too slow
+        // can write hash function check for this
+        if (strcmp(commandName, JUMP_COMMANDS[commandIndex]) == 0) {
+            *is = true;
             return COMMANDS_STATUS_OK;
         }
     }

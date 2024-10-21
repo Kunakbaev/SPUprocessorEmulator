@@ -88,13 +88,6 @@ ProcessorErrors executeOperationWith2Args(Processor* processor,
     return PROCESSOR_STATUS_OK;
 }
 
-// #define PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(funcName, operationFuncPtr)                  \
-//     do {                                                                                \
-//         ProcessorErrors funcName(Processor* processor) {                                \
-//             IF_ERR_RETURN(executeOperationWith2Args(processor, operationFuncPtr));      \
-//         }                                                                               \
-//     } while (0)
-
 #define PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(funcName, operationFuncPtr)              \
     ProcessorErrors funcName(Processor* processor) {                                \
         IF_ERR_RETURN(executeOperationWith2Args(processor, operationFuncPtr));      \
@@ -104,10 +97,6 @@ PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(add2numsFunc, add2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc, sub2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc, mul2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc, div2nums);
-
-// ProcessorErrors add2numsFunc(Processor* processor) {
-//     IF_ERR_RETURN(executeOperationWith2Args(processor, add2nums));
-// }
 
 ProcessorErrors executeOperationWith1Arg(Processor* processor,
                                          oneArgOperFuncPtr operation) {

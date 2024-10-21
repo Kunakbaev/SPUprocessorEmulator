@@ -19,6 +19,7 @@ const char* getTableOfLabelsErrorMessage(TableOfLabelsErrors error);
 TableOfLabelsErrors addLabelName(const Label* label);
 
 // numOfCodeLine can be -1, label not found
+TableOfLabelsErrors printAllLabels();
 TableOfLabelsErrors getNumOfCodeLineByLabel(const char* labelName, Label* label);
 TableOfLabelsErrors destructTableOfLabels();
 

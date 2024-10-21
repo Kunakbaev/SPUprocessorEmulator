@@ -17,6 +17,8 @@ const char* getAssemblerErrorMessage(AssemblerErrors error) {
             return "Assembler error: error occured in commands sublib.\n";
         case ASSEMBLER_ERROR_FILE_STAT_ERROR:
             return "Assembler error: error couldn't get file size.\n";
+        case ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR:
+            return "Assembler error: error occured in table of labels sublib.\n";
 
         default:
             return "Unknown error.\n";

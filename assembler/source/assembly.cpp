@@ -4,6 +4,7 @@
 
 #include "../include/assembly.hpp"
 #include "../../common/commands/include/commands.hpp"
+#include "../include/tableOfLabels.hpp"
 
 
 
@@ -36,6 +37,7 @@ AssemblerErrors constructAssembler(Assembler* assembler,
 
     *assembler = {};
     assembler->instructionPointer = 0;
+    assembler->numOfBytesInDest   = 0;
     assembler->lines              = NULL;
     assembler->sourceFileName     = sourceFileName;
     assembler->destFileName       = destFileName;
@@ -43,7 +45,7 @@ AssemblerErrors constructAssembler(Assembler* assembler,
     IF_NOT_COND_RETURN(assembler->programCode != NULL,
                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
 
-
+    constructTableOfLabels();
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -162,10 +164,10 @@ static AssemblerErrors getArgumentMask(char* arg, int* mask, int* numArg, int* r
 // saves byte to programCode array and moves instructionPointer
 static AssemblerErrors addByteToProgramCodeArray(Assembler* assembler, uint8_t byte) {
     IF_ARG_NULL_RETURN(assembler);
-    IF_NOT_COND_RETURN(assembler->instructionPointer < MAX_LEN_OF_CODE,
+    IF_NOT_COND_RETURN(assembler->numOfBytesInDest < MAX_LEN_OF_CODE,
                         ASSEMBLER_ERROR_INVALID_ARGUMENT); // TODO: error handler
 
-    assembler->programCode[assembler->instructionPointer++] = byte;
+    assembler->programCode[assembler->numOfBytesInDest++] = byte;
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -222,6 +224,64 @@ static AssemblerErrors getCommandIndex(const char* lineOfCode, int* commandIndex
     return ASSEMBLER_STATUS_OK;
 }
 
+// if label is found, saves its code line to special array and then
+static AssemblerErrors tryLabel(Assembler* assembler, char* line, bool* is) {
+    IF_ARG_NULL_RETURN(assembler);
+    IF_ARG_NULL_RETURN(line);
+    IF_ARG_NULL_RETURN(is);
+
+    *is = false;
+    char* ptr = strchr(line, ':');
+    char* spacePtr = strchr(line, ' '); // WARNING: label names should be without spaces
+    size_t lineLen = strlen(line);
+    // LOG_DEBUG_VARS(line, lineLen, ptr);
+    if (ptr == NULL || (ptr - line) != lineLen - 1 || spacePtr != NULL)
+        return ASSEMBLER_STATUS_OK;
+
+    //*ptr = '\0';
+    Label label = {line, assembler->instructionPointer + 1};
+
+    TableOfLabelsErrors error = addLabelName(&label);
+    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(error));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
+
+    // LOG_DEBUG_VARS(label.codeLineInd, label.labelName);
+    //*ptr = ':';
+    *is = true;
+
+    return ASSEMBLER_STATUS_OK;
+}
+
+static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, char* argPtr, bool* is) {
+    IF_ARG_NULL_RETURN(assembler);
+    IF_ARG_NULL_RETURN(lineOfCode);
+    IF_ARG_NULL_RETURN(argPtr);
+    IF_ARG_NULL_RETURN(is);
+
+    *is = false;
+    CommandErrors error = isJumpCommand(lineOfCode, is);
+    if (error != COMMANDS_STATUS_OK) {
+        LOG_ERROR(getCommandsErrorMessage(error));
+        return ASSEMBLER_ERROR_COMMAND_ERROR;
+    }
+
+    Label label = {};
+    TableOfLabelsErrors err = getNumOfCodeLineByLabel(argPtr, &label);
+    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(err));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
+
+    // LOG_DEBUG_VARS(lineOfCode, argPtr, label.codeLineInd);
+    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
+    *is = true;
+    *(argPtr - 1) = ' '; // returning string to initial state
+
+    return ASSEMBLER_STATUS_OK;
+}
+
 // string is char*, however we don't wanna change it, so before return, we have to roll back to inital state
 static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     // we have 2 passes when we look at the code lines, so we don't wanna change them
@@ -231,6 +291,12 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     IF_ARG_NULL_RETURN(lineOfCode);
 
+    bool is = false;
+    IF_ERR_RETURN(tryLabel(assembler, lineOfCode, &is));
+    if (is) {
+        return ASSEMBLER_STATUS_OK;
+    }
+
     int commandIndex = -1;
     char* argPtr = getCommandArgsPtrAndSepCommandName(lineOfCode);
     IF_ERR_RETURN(getCommandIndex(lineOfCode, &commandIndex));
@@ -238,6 +304,12 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     if (argPtr == NULL)
         return ASSEMBLER_STATUS_OK;
+
+    is = false;
+    IF_ERR_RETURN(tryJumpCommand(assembler, lineOfCode, argPtr, &is));
+    if (is) {
+        return ASSEMBLER_STATUS_OK;
+    }
 
     // WTF???
     int mask   = 0;
@@ -321,8 +393,10 @@ AssemblerErrors processCodeLines(Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
     assembler->instructionPointer = 0;
+    assembler->numOfBytesInDest   = 0;
     for (size_t lineInd = 0; lineInd < assembler->numOfLines; ++lineInd) {
         IF_ERR_RETURN(parseLineOfCode(assembler, assembler->lines[lineInd]));
+        ++assembler->instructionPointer;
     }
 
     return ASSEMBLER_STATUS_OK;
@@ -336,7 +410,9 @@ AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
     // TODO: save to binary file
-    for (size_t lineInd = 0; lineInd < assembler->instructionPointer; ++lineInd) {
+    printf("saving to dest file\n");
+    printAllLabels();
+    for (size_t lineInd = 0; lineInd < assembler->numOfBytesInDest; ++lineInd) {
         fprintf(destFile, "%d\n", assembler->programCode[lineInd]);
     }
     fclose(destFile);
@@ -350,6 +426,10 @@ AssemblerErrors compileProgram(Assembler* assembler) {
     // FIXME: ну ты понял ))
     IF_ERR_RETURN(readLinesFromFileAndRemoveComments(assembler));
     IF_ERR_RETURN(processCodeLines(assembler));
+    // running second time, because we didn't know where labels led to on the first run
+    LOG_WARNING("------------------");
+    printAllLabels();
+    IF_ERR_RETURN(processCodeLines(assembler));
     IF_ERR_RETURN(saveProgramCodeToDestFile(assembler));
 
     return ASSEMBLER_STATUS_OK;
@@ -361,6 +441,7 @@ AssemblerErrors destructAssembler(Assembler* assembler) {
     FREE(assembler->lines);
 
     assembler = {}; // clear struct values just in case
+    destructTableOfLabels();
 
     return ASSEMBLER_STATUS_OK;
 }

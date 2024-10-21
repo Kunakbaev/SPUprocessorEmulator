@@ -5,6 +5,7 @@
 
 struct Assembler {
     size_t instructionPointer = 0;
+    size_t numOfBytesInDest   = 0;
     uint8_t* programCode;
     size_t numOfLines;
     char** lines;
