@@ -10,6 +10,7 @@ ProcessorErrors popFromProcessorStackFunc(Processor* processor);
 ProcessorErrors pushToProcessorStackFunc(Processor* processor);
 ProcessorErrors procCommandCallFunc(Processor* processor);
 ProcessorErrors procCommandReturnFromFunc(Processor* processor);
+ProcessorErrors procCommandDrawFunc(Processor* processor);
 
 #define PROCESSOR_COMMAND_METHOD_DECL(funcName) \
     ProcessorErrors funcName(Processor* processor)

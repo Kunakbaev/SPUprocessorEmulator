@@ -2,6 +2,8 @@
 push 7      ; argument for factorial func
 call recursiveFactorial:
 
+push AX
+out
 
 
 

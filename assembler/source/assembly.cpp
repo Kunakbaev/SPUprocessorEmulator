@@ -157,11 +157,21 @@ static AssemblerErrors getArgumentMask(char* arg, int* mask, int* numArg, int* r
     IF_ARG_NULL_RETURN(arg);
 
     tryRamArg(&arg, mask);
-    // LOG_DEBUG_VARS(arg, mask);
-    if (trySumOfArgs(arg, mask, numArg, regArg))
-        return ASSEMBLER_STATUS_OK;
+    size_t argLen = strlen(arg);
 
+    LOG_DEBUG_VARS(arg, mask);
+    if (trySumOfArgs(arg, mask, numArg, regArg)) {
+        if (*mask & HAS_RAM_ARG) arg[argLen] = ']';
+        //--arg;
+        return ASSEMBLER_STATUS_OK;
+    }
+
+    LOG_DEBUG_VARS(arg);
     IF_ERR_RETURN(argsToNumber(arg, numArg, regArg, mask));
+    LOG_DEBUG_VARS(arg, argLen);
+    if (*mask & HAS_RAM_ARG) arg[argLen] = ']';
+    //--arg;
+    LOG_DEBUG_VARS(arg);
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -300,30 +310,6 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
     return ASSEMBLER_STATUS_OK;
 }
 
-// static AssemblerErrors tryCallCommand(Assembler* assembler, char* lineOfCode, char* argPtr, bool* is) {
-//     IF_ARG_NULL_RETURN(assembler);
-//     IF_ARG_NULL_RETURN(lineOfCode);
-//     IF_ARG_NULL_RETURN(argPtr);
-//     IF_ARG_NULL_RETURN(is);
-//
-//     *is = false;
-//     CommandErrors error = isJumpCommand(lineOfCode, is);
-//     LOG_DEBUG_VARS("isJumpCommand", *is);
-//     if (error != COMMANDS_STATUS_OK) {
-//         LOG_ERROR(getCommandsErrorMessage(error));
-//         return ASSEMBLER_ERROR_COMMAND_ERROR;
-//     }
-//     if (!*is)
-//         return ASSEMBLER_STATUS_OK;
-//
-//     IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
-//     *is = true;
-//     *(argPtr - 1) = ' '; // returning string to initial state
-//
-//     return ASSEMBLER_STATUS_OK;
-// }
-
-
 static AssemblerErrors removeAllSpaceFromArgument(char* arg) {
     IF_ARG_NULL_RETURN(arg);
 
@@ -386,6 +372,7 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     int numArg = -1,
         regArg = -1;
 
+    LOG_DEBUG_VARS(argPtr);
     IF_ERR_RETURN(getArgumentMask(argPtr, &mask, &numArg, &regArg));
     LOG_DEBUG_VARS(lineOfCode, argPtr, mask, numArg, regArg);
 

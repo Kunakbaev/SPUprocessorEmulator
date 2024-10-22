@@ -317,4 +317,16 @@ ProcessorErrors procCommandReturnFromFunc(Processor* processor) {
     return PROCESSOR_STATUS_OK;
 }
 
+ProcessorErrors procCommandDrawFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    RamStructErrors error = drawRamMemory(&processor->ram);
+    if (error != RAM_STATUS_OK) {
+        LOG_ERROR(getRamErrorMessage(error));
+        return PROCESSOR_ERROR_RAM_ERROR;
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
 // FIXME: move to processor folder

@@ -2,6 +2,7 @@
 
 #include "../include/ram.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
+#include "SFML/Graphics.hpp"
 
 #define IF_ARG_NULL_RETURN(arg) \
     COMMON_IF_ARG_NULL_RETURN(arg, RAM_STATUS_OK, getRamErrorMessage)
@@ -12,9 +13,12 @@
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getRamErrorMessage)
 
-const size_t      MAX_MEMORY_SIZE       = 100;
-const long double RAM_OPERATION_LATENCY = 1.4; // time to sleep in second
+const size_t      MATRIX_SIDE_SIZE      = 101;
+const size_t      MAX_MEMORY_SIZE       = MATRIX_SIDE_SIZE * MATRIX_SIDE_SIZE;
+const long double RAM_OPERATION_LATENCY = 0; // time to sleep in second
 const char*       SLOW_RAM_MESSAGE      = "RAM is too slow";
+const int         TILE_SIZE             = 8;
+const int         WINDOW_SIZE           = TILE_SIZE * MATRIX_SIDE_SIZE;
 
 // Тарань меня полностью
 RamStructErrors pleaseGiveMeRAM(RamStruct* ram) {
@@ -65,7 +69,7 @@ RamStructErrors setRamVarByIndex(const RamStruct* ram, size_t index, processor_d
     return RAM_STATUS_OK;
 }
 
-RamStructErrors drawRamMemory(const RamStruct* ram) {
+RamStructErrors drawRamMemorySimpleConsoleVersion(const RamStruct* ram) {
     IF_ARG_NULL_RETURN(ram);
     IF_ARG_NULL_RETURN(ram->memory);
 
@@ -74,16 +78,64 @@ RamStructErrors drawRamMemory(const RamStruct* ram) {
     for (size_t varInd = 0, colInd = 1; varInd < ram->memorySize; ++varInd, ++colInd) {
         // TODO: sfml + graphicaly draw pixels
         // ASK: is type cast good?
-        putchar(ram->memory[varInd]);
+        putchar(ram->memory[varInd] == 255 ? '@' : ' ');
 
         // //#ifndef NDEBUG
         //     sleep(RAM_OPERATION_LATENCY);
         // //#endif
         if (colInd * colInd >= ram->memorySize) {
             putchar('\n');
+            colInd = 0;
         }
     }
     printf("\n");
+
+    return RAM_STATUS_OK;
+}
+
+// RamStructErrors fillRectangleAtCoords
+
+RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
+    IF_ARG_NULL_RETURN(ram);
+    IF_ARG_NULL_RETURN(ram->memory);
+
+    sf::VideoMode mode(WINDOW_SIZE, WINDOW_SIZE);
+    sf::RenderWindow screen(mode, "i am screen");
+
+    while (screen.isOpen()) {
+        sf::Event event = {};
+        while (screen.pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
+                screen.close();
+        }
+
+        screen.clear();
+        for (size_t varInd = 0; varInd < ram->memorySize; ++varInd) {
+            int x = varInd % MATRIX_SIDE_SIZE, y = varInd / MATRIX_SIDE_SIZE;
+            x *= TILE_SIZE;
+            y *= TILE_SIZE;
+
+            int color = (rand() & 1) ? 255 : 0;
+            color = ram->memory[varInd];
+            sf::RectangleShape square(sf::Vector2f(TILE_SIZE, TILE_SIZE));
+            square.setFillColor(sf::Color(color, color, color, 255));
+            square.setPosition((float)x, (float)y);
+            screen.draw(square);
+        }
+
+        screen.display();
+    }
+
+    return RAM_STATUS_OK;
+}
+
+
+RamStructErrors drawRamMemory(const RamStruct* ram) {
+    IF_ARG_NULL_RETURN(ram);
+    IF_ARG_NULL_RETURN(ram->memory);
+
+    // IF_ERR_RETURN(drawRamMemorySimpleConsoleVersion(ram));
+    IF_ERR_RETURN(drawRamMemoryGraphicalVersion(ram));
 
     return RAM_STATUS_OK;
 }

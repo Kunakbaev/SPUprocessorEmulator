@@ -1,18 +1,15 @@
 
-push 4      ; argument for factorial func
+push 7      ; argument for factorial func
 call recursiveFactorial:
+
 push AX
 out
 
 
-; ---------------------------------     FUNCSTIONS       -----------------------------------
 
 jmp FUNCS_SAFETY_LABEL:     ; we don't want main program to execute function's code without first calling it
 
 recursiveFactorial:     ;       receives arguments from stack of vars, puts result in AX
-    push AX
-    out
-
     pop AX
     push AX
     push 1
