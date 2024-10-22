@@ -12,8 +12,10 @@ struct Processor {
     // ASK: does it need to be const? And if so, how to implement it?
     // FIXME: rewrite to const
     uint8_t*             programCode; // WARNING: be careful with small data type
-    Stack                stackOfVars;
     processor_data_type* registers;
+
+    struct Stack         stackOfVars;
+    struct Stack         stackOfCalls; // saves size_t, instruction pointers to which we should return after call
     struct RamStruct     ram;
 };
 

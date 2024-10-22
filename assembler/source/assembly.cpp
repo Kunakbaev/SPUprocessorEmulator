@@ -259,6 +259,24 @@ static AssemblerErrors tryLabel(Assembler* assembler, char* line, bool* is) {
     return ASSEMBLER_STATUS_OK;
 }
 
+static AssemblerErrors saveLabelCode(Assembler* assembler, const char* arg) {
+    IF_ARG_NULL_RETURN(arg);
+    // TODO: number of line of code may exceed 255
+    // WARNING:
+
+    Label label = {};
+    TableOfLabelsErrors err = getNumOfCodeLineByLabel(arg, &label);
+    if (err != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(err));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
+
+    // LOG_DEBUG_VARS(lineOfCode, argPtr, label.codeLineInd);
+    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
+
+    return ASSEMBLER_STATUS_OK;
+}
+
 static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, char* argPtr, bool* is) {
     IF_ARG_NULL_RETURN(assembler);
     IF_ARG_NULL_RETURN(lineOfCode);
@@ -275,20 +293,36 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
     if (!*is)
         return ASSEMBLER_STATUS_OK;
 
-    Label label = {};
-    TableOfLabelsErrors err = getNumOfCodeLineByLabel(argPtr, &label);
-    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(err));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
-
-    // LOG_DEBUG_VARS(lineOfCode, argPtr, label.codeLineInd);
-    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
+    IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
     *is = true;
     *(argPtr - 1) = ' '; // returning string to initial state
 
     return ASSEMBLER_STATUS_OK;
 }
+
+// static AssemblerErrors tryCallCommand(Assembler* assembler, char* lineOfCode, char* argPtr, bool* is) {
+//     IF_ARG_NULL_RETURN(assembler);
+//     IF_ARG_NULL_RETURN(lineOfCode);
+//     IF_ARG_NULL_RETURN(argPtr);
+//     IF_ARG_NULL_RETURN(is);
+//
+//     *is = false;
+//     CommandErrors error = isJumpCommand(lineOfCode, is);
+//     LOG_DEBUG_VARS("isJumpCommand", *is);
+//     if (error != COMMANDS_STATUS_OK) {
+//         LOG_ERROR(getCommandsErrorMessage(error));
+//         return ASSEMBLER_ERROR_COMMAND_ERROR;
+//     }
+//     if (!*is)
+//         return ASSEMBLER_STATUS_OK;
+//
+//     IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
+//     *is = true;
+//     *(argPtr - 1) = ' '; // returning string to initial state
+//
+//     return ASSEMBLER_STATUS_OK;
+// }
+
 
 static AssemblerErrors removeAllSpaceFromArgument(char* arg) {
     IF_ARG_NULL_RETURN(arg);
@@ -353,7 +387,7 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
         regArg = -1;
 
     IF_ERR_RETURN(getArgumentMask(argPtr, &mask, &numArg, &regArg));
-    // LOG_DEBUG_VARS(lineOfCode, argPtr, mask, numArg, regArg);
+    LOG_DEBUG_VARS(lineOfCode, argPtr, mask, numArg, regArg);
 
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, mask));
     // WARNING: first we output const and then register
@@ -394,6 +428,14 @@ static AssemblerErrors prepareString(char** line) {
     IF_ERR_RETURN(clearCodeAfterComment(*line));
     size_t lineOfCodeLen = strlen(*line);
     (*line)[lineOfCodeLen - 1] = '\0'; // remove \n
+    --lineOfCodeLen;
+    char* endPtr = *line + lineOfCodeLen - 1;
+
+    while (lineOfCodeLen > 0 && isDelim(*endPtr)) {
+        *endPtr = '\0';
+        --lineOfCodeLen;
+        --endPtr;
+    }
 
     LOG_DEBUG_VARS("was", *line);
     char* ptr = *line;

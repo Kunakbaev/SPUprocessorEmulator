@@ -43,8 +43,9 @@ int main() {
     AssemblerErrors error = ASSEMBLER_STATUS_OK;
     // ../simpleAsmPrograms/iterativeFact.asm
     // ../program.asm
+    // ../simpleAsmPrograms/recursiveFact.asm
     error = constructAssembler(&assembler,
-                               "../simpleAsmPrograms/iterativeFact.asm",
+                               "../program.asm",
                                "../programBinCode.txt");
     IF_MAIN_ERR_RETURN(error);
 

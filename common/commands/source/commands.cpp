@@ -28,11 +28,14 @@ constexpr CommandStruct COMMANDS[] = {
     {11, "jmp"},
     {12, "jb"},
     {13, "ja"},
+    {14, "je"},
+    {15, "call"},
+    {16, "ret"},
 };
 
 // WARNING: be carefull that jump commands in this array and in COMMANDS array are same
 constexpr const char* JUMP_COMMANDS[] = {
-    "jmp", "jb", "ja"
+    "jmp", "jb", "ja", "je", "call" // ASK: is this ok?
 };
 
 const size_t NUM_OF_COMMANDS      = sizeof(COMMANDS) / sizeof(*COMMANDS);

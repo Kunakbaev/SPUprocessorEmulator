@@ -30,7 +30,30 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
 
     *processor = {}; // name constants ~~~~~|
     // FIXME: const int initialCapacity = 8;
-    constructStack(&processor->stackOfVars, 8, PROCESSOR_DATA_TYPE_SIZE);
+    const int initialCapacity = 8;
+    Errors error = constructStack(&processor->stackOfVars, initialCapacity, PROCESSOR_DATA_TYPE_SIZE);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    // int x = 10;
+    // pushElementToStack(&processor->stackOfVars, &x);
+    // exit(0);
+//
+//
+
+
+
+
+
+    // ASK: copypaste?
+    error = constructStack(&processor->stackOfCalls, initialCapacity, sizeof(size_t));
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
     processor->instructionPointer   = 0;
     processor->numberOfInstructions = 0;
     processor->programCode          = NULL;
@@ -44,9 +67,9 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR); // free()
 
-    RamStructErrors error = pleaseGiveMeRAM(&processor->ram);
-    if (error != RAM_STATUS_OK) {
-        LOG_ERROR(getRamErrorMessage(error)); // free() free()
+    RamStructErrors err = pleaseGiveMeRAM(&processor->ram);
+    if (err != RAM_STATUS_OK) {
+        LOG_ERROR(getRamErrorMessage(err)); // free() free()
         return PROCESSOR_ERROR_RAM_ERROR;
     }
 
@@ -131,6 +154,8 @@ ProcessorCommandsStruct processorCommandsArr[] = {
     {"ja",   procCommandJumpIfMore},
     {"jb",   procCommandJumpIfBelow},
     {"je",   procCommandJumpIfEqual},
+    {"call", procCommandCallFunc},
+    {"ret",  procCommandReturnFromFunc}
 };
 
 const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
@@ -184,7 +209,12 @@ ProcessorErrors ProcessorDestructor(Processor* processor) {
 
     Errors error = destructStack(&processor->stackOfVars);
     if (error != STATUS_OK) {
-        // FIXME: probably overload happens and that's not function that we are looking for
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    error = destructStack(&processor->stackOfCalls);
+    if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
         return PROCESSOR_ERROR_STACK_ERROR;
     }

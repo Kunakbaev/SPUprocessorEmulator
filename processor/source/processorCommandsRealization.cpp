@@ -188,6 +188,10 @@ ProcessorErrors pushToProcessorStackFunc(Processor* processor) {
     IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, &argPtr));
     LOG_DEBUG_VARS(*argPtr);
 
+    // Errors err = dumpStackLog(&processor->stackOfVars);
+    // LOG_ERROR(getErrorMessage(err));
+    // LOG_DEBUG("ok");
+
     Errors error = pushElementToStack(&processor->stackOfVars, argPtr);
     if (error != STATUS_OK) {
         LOG_ERROR(getErrorMessage(error));
@@ -288,5 +292,29 @@ PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfEqual, jmpConditionEqual);
 PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfBelow, jmpConditionLess);
 PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfMore,  jmpConditionMore);
 PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpAnyway,  NULL);
+
+ProcessorErrors procCommandCallFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    int tmp = processor->instructionPointer + 1; // tmp var, just in case
+    Errors error = pushElementToStack(&processor->stackOfCalls, &tmp);
+    LOG_DEBUG_VARS("call function", processor->instructionPointer);
+    IF_ERR_RETURN(procCommandJumpAnyway(processor));
+
+    return PROCESSOR_STATUS_OK;
+}
+
+ProcessorErrors procCommandReturnFromFunc(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    int tmp = 0; // tmp var, just in case
+    Errors error = popElementToStack(&processor->stackOfCalls, &tmp);
+    LOG_DEBUG_VARS("return", processor->instructionPointer, tmp);
+    //IF_ERR_RETURN(procCommandJumpAnyway(processor));
+
+    processor->instructionPointer = tmp; // ASK: is it copypaste, because I already have jumpAnyway function
+
+    return PROCESSOR_STATUS_OK;
+}
 
 // FIXME: move to processor folder
