@@ -23,8 +23,13 @@
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 const char   COMMENT_BEGIN_CHAR    = ';'; // maybe make it assembler arg
 const size_t MAX_LEN_OF_CODE       = 1 << 10;
+const char* DELIMS = " \n\t";
 
 char* fileLineBuffer;
+
+static bool isDelim(char ch) {
+    return strchr(DELIMS, ch) != NULL;
+}
 
 AssemblerErrors constructAssembler(Assembler* assembler,
                                    const char* sourceFileName,
@@ -36,7 +41,7 @@ AssemblerErrors constructAssembler(Assembler* assembler,
                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
 
     *assembler = {};
-    assembler->instructionPointer = 0;
+    //assembler->instructionPointer = 0;
     assembler->numOfBytesInDest   = 0;
     assembler->lines              = NULL;
     assembler->sourceFileName     = sourceFileName;
@@ -239,7 +244,7 @@ static AssemblerErrors tryLabel(Assembler* assembler, char* line, bool* is) {
         return ASSEMBLER_STATUS_OK;
 
     //*ptr = '\0';
-    Label label = {line, assembler->instructionPointer + 1};
+    Label label = {line, assembler->numOfBytesInDest};
 
     TableOfLabelsErrors error = addLabelName(&label);
     if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
@@ -262,10 +267,13 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
 
     *is = false;
     CommandErrors error = isJumpCommand(lineOfCode, is);
+    LOG_DEBUG_VARS("isJumpCommand", *is);
     if (error != COMMANDS_STATUS_OK) {
         LOG_ERROR(getCommandsErrorMessage(error));
         return ASSEMBLER_ERROR_COMMAND_ERROR;
     }
+    if (!*is)
+        return ASSEMBLER_STATUS_OK;
 
     Label label = {};
     TableOfLabelsErrors err = getNumOfCodeLineByLabel(argPtr, &label);
@@ -282,6 +290,28 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
     return ASSEMBLER_STATUS_OK;
 }
 
+static AssemblerErrors removeAllSpaceFromArgument(char* arg) {
+    IF_ARG_NULL_RETURN(arg);
+
+    char* ptrL = arg;
+    char* ptrR = arg;
+
+    LOG_DEBUG_VARS("was before", arg);
+    while (*ptrR != '\0') {
+        if (!isDelim(*ptrR)) {
+            *ptrL = *ptrR;
+            ++ptrL;
+        }
+
+        ++ptrR;
+    }
+    *ptrL = '\0';
+
+    LOG_DEBUG_VARS("became:", arg);
+
+    return ASSEMBLER_STATUS_OK;
+}
+
 // string is char*, however we don't wanna change it, so before return, we have to roll back to inital state
 static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     // we have 2 passes when we look at the code lines, so we don't wanna change them
@@ -293,20 +323,26 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     bool is = false;
     IF_ERR_RETURN(tryLabel(assembler, lineOfCode, &is));
+    //LOG_DEBUG_VARS(lineOfCode, is);
     if (is) {
         return ASSEMBLER_STATUS_OK;
     }
 
     int commandIndex = -1;
     char* argPtr = getCommandArgsPtrAndSepCommandName(lineOfCode);
+    LOG_DEBUG_VARS(lineOfCode, argPtr);
     IF_ERR_RETURN(getCommandIndex(lineOfCode, &commandIndex));
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, commandIndex));
 
+    //LOG_DEBUG_VARS(lineOfCode, argPtr, commandIndex);
     if (argPtr == NULL)
         return ASSEMBLER_STATUS_OK;
 
+    IF_ERR_RETURN(removeAllSpaceFromArgument(argPtr));
+
     is = false;
     IF_ERR_RETURN(tryJumpCommand(assembler, lineOfCode, argPtr, &is));
+    //LOG_DEBUG_VARS(is);
     if (is) {
         return ASSEMBLER_STATUS_OK;
     }
@@ -321,7 +357,7 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, mask));
     // WARNING: first we output const and then register
-    LOG_DEBUG_VARS(mask, numArg, regArg);
+    //LOG_DEBUG_VARS(mask, numArg, regArg);
     if (numArg  != -1)
         IF_ERR_RETURN(addNumBytes(assembler, numArg));
     if (regArg != -1)
@@ -351,6 +387,27 @@ static AssemblerErrors getNumOfLinesInFile(FILE* source, size_t* numOfLines) {
     return ASSEMBLER_STATUS_OK;
 }
 
+static AssemblerErrors prepareString(char** line) {
+    IF_ARG_NULL_RETURN(line);
+    IF_ARG_NULL_RETURN(*line);
+
+    IF_ERR_RETURN(clearCodeAfterComment(*line));
+    size_t lineOfCodeLen = strlen(*line);
+    (*line)[lineOfCodeLen - 1] = '\0'; // remove \n
+
+    LOG_DEBUG_VARS("was", *line);
+    char* ptr = *line;
+    while (*ptr != '\0' && isDelim(*ptr)) {
+        ++ptr;
+        //LOG_DEBUG_VARS(ptr);
+    }
+    *line = ptr;
+
+    LOG_DEBUG_VARS(*line);
+
+    return ASSEMBLER_STATUS_OK;
+}
+
 // TODO: написать комментарий: почему так а не 2 функции
 static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
@@ -369,22 +426,33 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
 
     size_t lineInd = 0;
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, source)) {
-        LOG_DEBUG_VARS(fileLineBuffer);
-        IF_ERR_RETURN(clearCodeAfterComment(fileLineBuffer));
+        // LOG_DEBUG_VARS(fileLineBuffer);
         size_t lineOfCodeLen = strlen(fileLineBuffer);
-        fileLineBuffer[lineOfCodeLen - 1] = '\0'; // remove \n
-
-        LOG_DEBUG_VARS(lineOfCodeLen, fileLineBuffer);
         assembler->lines[lineInd] = (char*)calloc(lineOfCodeLen + 1, sizeof(char));
         IF_NOT_COND_RETURN(assembler->lines[lineInd] != NULL,
                            ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
         strcpy(assembler->lines[lineInd], fileLineBuffer);
+
+        IF_ERR_RETURN(prepareString(&assembler->lines[lineInd]));
+        lineOfCodeLen = strlen(assembler->lines[lineInd]);
+        if (lineOfCodeLen == 0 || assembler->lines[lineInd] == NULL)
+            continue;
+
+        //LOG_DEBUG_VARS(lineOfCodeLen, fileLineBuffer);
         ++lineInd;
     }
+    assembler->numOfLines = lineInd;
 
+    // BRUH:
     // source file is no longer useful
     fclose(source);
-    LOG_DEBUG_VARS(assembler->numOfLines, assembler->lines[0], assembler->lines[1]);
+    //LOG_DEBUG_VARS(assembler->numOfLines, assembler->lines[0], assembler->lines[1]);
+
+    for (size_t i = 0; i < assembler->numOfLines; ++i) {
+        LOG_DEBUG_VARS(i, assembler->lines[i]);
+    }
+
+    //exit(0);
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -392,11 +460,9 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
 AssemblerErrors processCodeLines(Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
-    assembler->instructionPointer = 0;
     assembler->numOfBytesInDest   = 0;
     for (size_t lineInd = 0; lineInd < assembler->numOfLines; ++lineInd) {
         IF_ERR_RETURN(parseLineOfCode(assembler, assembler->lines[lineInd]));
-        ++assembler->instructionPointer;
     }
 
     return ASSEMBLER_STATUS_OK;
@@ -416,6 +482,7 @@ AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
         fprintf(destFile, "%d\n", assembler->programCode[lineInd]);
     }
     fclose(destFile);
+    // printf("done\n");
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -436,7 +503,7 @@ AssemblerErrors compileProgram(Assembler* assembler) {
 }
 
 AssemblerErrors destructAssembler(Assembler* assembler) {
-    FREE(fileLineBuffer);
+    // FREE(fileLineBuffer);
     FREE(assembler->programCode);
     FREE(assembler->lines);
 

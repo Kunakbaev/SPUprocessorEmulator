@@ -26,8 +26,8 @@ constexpr CommandStruct COMMANDS[] = {
     {9,  "pop"},    // pop last value from stack to given register
     {10, "pick"},
     {11, "jmp"},
-    {11, "jb"},
-    {11, "ja"},
+    {12, "jb"},
+    {13, "ja"},
 };
 
 // WARNING: be carefull that jump commands in this array and in COMMANDS array are same
@@ -84,6 +84,7 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
     for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
         // FIXME: too slow
         // can write hash function check for this
+        // LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
         if (strcmp(commandName, COMMANDS[commandIndex].commandName) == 0) {
             *result = COMMANDS[commandIndex];
             return COMMANDS_STATUS_OK;
@@ -96,6 +97,7 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result) {
     IF_ARG_NULL_RETURN(result);
 
+    // TODO: remove for
     result->commandName = "?"; // in case if not found
     for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
         // FIXME: too slow?

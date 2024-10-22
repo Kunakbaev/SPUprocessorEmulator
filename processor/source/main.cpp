@@ -16,7 +16,6 @@
 
 int main() {
     setLoggingLevel(DEBUG);
-    printf("bruh\n");
     LOG_DEBUG("Compiling program (transfer between 'compiler' code and 'working program'!\n");
 
     Processor processor = {};

@@ -126,7 +126,11 @@ ProcessorCommandsStruct processorCommandsArr[] = {
     {"pick", lookLastVarInVarStackFunc},
     {"sub",  sub2numsFunc},
     {"mul",  mul2numsFunc},
-    {"div",  div2numsFunc}
+    {"div",  div2numsFunc},
+    {"jmp",  procCommandJumpAnyway},
+    {"ja",   procCommandJumpIfMore},
+    {"jb",   procCommandJumpIfBelow},
+    {"je",   procCommandJumpIfEqual},
 };
 
 const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
@@ -152,8 +156,6 @@ ProcessorErrors runProgramBinary(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     processor->instructionPointer = 0;
-
-    // reinvented while =)
     LOG_DEBUG_VARS(processor->instructionPointer);
     while (processor->instructionPointer < processor->numberOfInstructions) {
         int commandIndex = processor->programCode[processor->instructionPointer];

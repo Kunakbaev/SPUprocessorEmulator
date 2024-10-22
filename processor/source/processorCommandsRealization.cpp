@@ -228,7 +228,6 @@ ProcessorErrors popFromProcessorStackFunc(Processor* processor) {
     return PROCESSOR_STATUS_OK;
 }
 
-
 // ends (finishes) 'program'
 ProcessorErrors haltCommandFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
@@ -239,5 +238,55 @@ ProcessorErrors haltCommandFunc(Processor* processor) {
 
     return PROCESSOR_STATUS_OK;
 }
+
+ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr comparator) {
+    IF_ARG_NULL_RETURN(processor->programCode);
+
+    if (comparator == NULL) { // that's jmp command, without any conditions
+        // WARNING: endless loop can happen
+        processor->instructionPointer = processor->programCode[processor->instructionPointer];
+        //++(processor->instructionPointer);
+        return PROCESSOR_STATUS_OK;
+    }
+
+    processor_data_type number_1 = 0;
+    processor_data_type number_2 = 0;
+    // TODO: define for checking error from separate lib or function
+    LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
+    Errors error = popElementToStack(&processor->stackOfVars, &number_2);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    error = popElementToStack(&processor->stackOfVars, &number_1);
+    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    processor_data_type operationResult = (*comparator)(number_1, number_2);
+    LOG_DEBUG_VARS(number_1, number_2, operationResult);
+
+    if (operationResult) { // jump happens
+        processor->instructionPointer = processor->programCode[processor->instructionPointer];
+    } else { // no jump
+        ++processor->instructionPointer;
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+#define PROCESSOR_GENERAL_JUMP_COMMAND(funcName, operationFuncPtr)              \
+    ProcessorErrors funcName(Processor* processor) {                            \
+        LOG_DEBUG_VARS(funcName);                                               \
+        IF_ERR_RETURN(generalJmpCommandFunc(processor, operationFuncPtr));      \
+    }                                                                           \
+
+PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfEqual, jmpConditionEqual);
+PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfBelow, jmpConditionLess);
+PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfMore,  jmpConditionMore);
+PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpAnyway,  NULL);
 
 // FIXME: move to processor folder

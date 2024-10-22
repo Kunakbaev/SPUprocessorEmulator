@@ -41,8 +41,10 @@ int main() {
 
     Assembler assembler = {};
     AssemblerErrors error = ASSEMBLER_STATUS_OK;
+    // ../simpleAsmPrograms/iterativeFact.asm
+    // ../program.asm
     error = constructAssembler(&assembler,
-                               "../program.asm",
+                               "../simpleAsmPrograms/iterativeFact.asm",
                                "../programBinCode.txt");
     IF_MAIN_ERR_RETURN(error);
 
@@ -53,21 +55,3 @@ int main() {
 
     return 0;
 }
-
-/*
-
-push 30
-push 70
-add
-push 60
-push 40
-sub
-div
-push 13
-push 3
-sub
-add
-out
-halt
-
-*/

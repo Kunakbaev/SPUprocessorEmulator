@@ -9,12 +9,17 @@ ProcessorErrors popAndPrintLastVarInStackFunc(Processor* processor);
 ProcessorErrors popFromProcessorStackFunc(Processor* processor);
 ProcessorErrors pushToProcessorStackFunc(Processor* processor);
 
-#define PROCESSOR_COMMAND_FUNC_DECL_WITH_2_ARGS(funcName) \
+#define PROCESSOR_COMMAND_METHOD_DECL(funcName) \
     ProcessorErrors funcName(Processor* processor)
 
-PROCESSOR_COMMAND_FUNC_DECL_WITH_2_ARGS(add2numsFunc);
-PROCESSOR_COMMAND_FUNC_DECL_WITH_2_ARGS(sub2numsFunc);
-PROCESSOR_COMMAND_FUNC_DECL_WITH_2_ARGS(mul2numsFunc);
-PROCESSOR_COMMAND_FUNC_DECL_WITH_2_ARGS(div2numsFunc);
+PROCESSOR_COMMAND_METHOD_DECL(add2numsFunc);
+PROCESSOR_COMMAND_METHOD_DECL(sub2numsFunc);
+PROCESSOR_COMMAND_METHOD_DECL(mul2numsFunc);
+PROCESSOR_COMMAND_METHOD_DECL(div2numsFunc);
+
+PROCESSOR_COMMAND_METHOD_DECL(procCommandJumpIfEqual);
+PROCESSOR_COMMAND_METHOD_DECL(procCommandJumpIfBelow);
+PROCESSOR_COMMAND_METHOD_DECL(procCommandJumpIfMore);
+PROCESSOR_COMMAND_METHOD_DECL(procCommandJumpAnyway);
 
 #endif

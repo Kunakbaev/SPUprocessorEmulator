@@ -1,4 +1,1 @@
-jmp bruh:
-bruh:
-biba:
-iamlabel:
+        jmp            iamlabel

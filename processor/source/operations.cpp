@@ -39,3 +39,17 @@ processor_data_type cosOperation(processor_data_type a) {
 processor_data_type absOperation(processor_data_type a) {
     return abs(a);
 }
+
+bool jmpConditionEqual(processor_data_type a, processor_data_type b) {
+    return a == b;
+}
+
+bool jmpConditionLess(processor_data_type a, processor_data_type b) {
+    return a < b;
+}
+
+bool jmpConditionMore(processor_data_type a, processor_data_type b) {
+    return a > b;
+}
+
+
