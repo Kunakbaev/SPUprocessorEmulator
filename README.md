@@ -11,3 +11,5 @@ To install stack structure lib
 ```
 make install -C ./external/StackStruct
 ```
+
+number of code lines in one assembly file cannot exceed 255 for now

@@ -329,4 +329,20 @@ ProcessorErrors procCommandDrawFunc(Processor* processor) {
     return PROCESSOR_STATUS_OK;
 }
 
+ProcessorErrors procCommandInFromTerminal(Processor* processor) {
+    IF_ARG_NULL_RETURN(processor);
+
+    processor_data_type number = 0; // FIXME: doesn't work with double
+    printf("print your number: ");
+    scanf("%d", &number);
+
+    Errors error = pushElementToStack(&processor->stackOfVars, &number);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
 // FIXME: move to processor folder

@@ -124,7 +124,10 @@ RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
         }
 
         screen.display();
+        // break;
     }
+    //sleep(1);
+    //screen.close();
 
     return RAM_STATUS_OK;
 }

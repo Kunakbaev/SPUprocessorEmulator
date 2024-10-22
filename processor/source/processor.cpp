@@ -156,7 +156,8 @@ ProcessorCommandsStruct processorCommandsArr[] = {
     {"je",   procCommandJumpIfEqual},
     {"call", procCommandCallFunc},
     {"ret",  procCommandReturnFromFunc},
-    {"draw", procCommandDrawFunc}
+    {"draw", procCommandDrawFunc},
+    {"in",   procCommandInFromTerminal}
 };
 
 const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
