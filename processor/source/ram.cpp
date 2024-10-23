@@ -2,7 +2,6 @@
 
 #include "../include/ram.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
-#include "SFML/Graphics.hpp"
 
 #define IF_ARG_NULL_RETURN(arg) \
     COMMON_IF_ARG_NULL_RETURN(arg, RAM_STATUS_OK, getRamErrorMessage)
@@ -13,11 +12,11 @@
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getRamErrorMessage)
 
-const size_t      MATRIX_SIDE_SIZE      = 101;
+const size_t      MATRIX_SIDE_SIZE      = 41;
 const size_t      MAX_MEMORY_SIZE       = MATRIX_SIDE_SIZE * MATRIX_SIDE_SIZE;
 const long double RAM_OPERATION_LATENCY = 0; // time to sleep in second
 const char*       SLOW_RAM_MESSAGE      = "RAM is too slow";
-const int         TILE_SIZE             = 8;
+const int         TILE_SIZE             = 25;
 const int         WINDOW_SIZE           = TILE_SIZE * MATRIX_SIDE_SIZE;
 
 // Тарань меня полностью
@@ -25,6 +24,9 @@ RamStructErrors pleaseGiveMeRAM(RamStruct* ram) {
     IF_ARG_NULL_RETURN(ram);
 
     *ram = {};
+    sf::VideoMode mode(WINDOW_SIZE, WINDOW_SIZE);
+    static sf::RenderWindow tmp(mode, "i am screen");
+    ram->screen     = &tmp;
     ram->memorySize = MAX_MEMORY_SIZE;
     ram->memory     = (processor_data_type*)calloc(MAX_MEMORY_SIZE, sizeof(processor_data_type));
     IF_NOT_COND_RETURN(ram->memory != NULL,
@@ -99,35 +101,34 @@ RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
     IF_ARG_NULL_RETURN(ram);
     IF_ARG_NULL_RETURN(ram->memory);
 
-    sf::VideoMode mode(WINDOW_SIZE, WINDOW_SIZE);
-    sf::RenderWindow screen(mode, "i am screen");
-
-    while (screen.isOpen()) {
-        sf::Event event = {};
-        while (screen.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                screen.close();
-        }
-
-        screen.clear();
-        for (size_t varInd = 0; varInd < ram->memorySize; ++varInd) {
-            int x = varInd % MATRIX_SIDE_SIZE, y = varInd / MATRIX_SIDE_SIZE;
-            x *= TILE_SIZE;
-            y *= TILE_SIZE;
-
-            int color = (rand() & 1) ? 255 : 0;
-            color = ram->memory[varInd];
-            sf::RectangleShape square(sf::Vector2f(TILE_SIZE, TILE_SIZE));
-            square.setFillColor(sf::Color(color, color, color, 255));
-            square.setPosition((float)x, (float)y);
-            screen.draw(square);
-        }
-
-        screen.display();
-        // break;
+    if (!ram->screen->isOpen()) {
+        return RAM_STATUS_OK; // is this error?
     }
-    //sleep(1);
-    //screen.close();
+
+    sf::Event event = {};
+    while (ram->screen->pollEvent(event)) {
+        if (event.type == sf::Event::Closed)
+            ram->screen->close();
+    }
+
+    // LOG_ERROR("dfas;l---------------------------------");
+    ram->screen->clear();
+    // LOG_DEBUG("ok");
+    for (size_t varInd = 0; varInd < ram->memorySize; ++varInd) {
+        int x = varInd % MATRIX_SIDE_SIZE, y = varInd / MATRIX_SIDE_SIZE;
+        x *= TILE_SIZE;
+        y *= TILE_SIZE;
+
+        int color = (rand() & 1) ? 255 : 0;
+        color = ram->memory[varInd];
+        sf::RectangleShape square(sf::Vector2f(TILE_SIZE, TILE_SIZE));
+        square.setFillColor(sf::Color(color, color, color, 255));
+        square.setPosition((float)x, (float)y);
+        ram->screen->draw(square);
+        LOG_DEBUG("ok");
+    }
+
+    ram->screen->display();
 
     return RAM_STATUS_OK;
 }

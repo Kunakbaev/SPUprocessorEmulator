@@ -13,6 +13,7 @@ enum ProcessorErrors {
     PROCESSOR_ERROR_BAD_INS_POINTER                       = 6,
     PROCESSOR_ERROR_COMMANDS_ERROR                        = 7,
     PROCESSOR_ERROR_RAM_ERROR                             = 8,
+    PROCESSOR_ERROR_BAD_FSAT_STATUS                       = 9,
 };
 
 const char* getProcessorErrorMessage(ProcessorErrors error);

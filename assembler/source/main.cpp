@@ -46,7 +46,7 @@ int main() {
     // ../simpleAsmPrograms/recursiveFact.asm
     error = constructAssembler(&assembler,
                                "../program.asm",
-                               "../programBinCode.txt");
+                               "../programBinCode.bin");
     IF_MAIN_ERR_RETURN(error);
 
     error = compileProgram(&assembler);

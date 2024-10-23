@@ -500,16 +500,15 @@ AssemblerErrors processCodeLines(Assembler* assembler) {
 AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
-    FILE* destFile = fopen(assembler->destFileName, "w");
+    FILE* destFile = fopen(assembler->destFileName, "wb");
     IF_NOT_COND_RETURN(destFile != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
     // TODO: save to binary file
     printf("saving to dest file\n");
     printAllLabels();
-    for (size_t lineInd = 0; lineInd < assembler->numOfBytesInDest; ++lineInd) {
-        fprintf(destFile, "%d\n", assembler->programCode[lineInd]);
-    }
+    fwrite(assembler->programCode, assembler->numOfBytesInDest, sizeof(uint8_t), destFile);
+
     fclose(destFile);
     // printf("done\n");
 

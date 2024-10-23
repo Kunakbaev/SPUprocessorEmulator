@@ -2,6 +2,7 @@
 #define PROCESSOR_INCLUDE_RAM_HPP
 
 #include "../../common/include/processorSettings.hpp"
+#include "SFML/Graphics.hpp"
 
 enum RamStructErrors {
     RAM_STATUS_OK                                   = 0,                  // no error, everything is valid
@@ -13,6 +14,7 @@ enum RamStructErrors {
 struct RamStruct {
     size_t               memorySize;
     processor_data_type* memory;
+    sf::RenderWindow*    screen;
 };
 
 RamStructErrors pleaseGiveMeRAM(RamStruct* ram);

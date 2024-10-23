@@ -93,10 +93,11 @@ ProcessorErrors executeOperationWith2Args(Processor* processor,
         IF_ERR_RETURN(executeOperationWith2Args(processor, operationFuncPtr));      \
     }                                                                               \
 
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(add2numsFunc, add2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc, sub2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc, mul2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc, div2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(add2numsFunc,            add2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc,            sub2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc,            mul2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc,            div2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mod2numsFunc, mod2nums);
 
 ProcessorErrors executeOperationWith1Arg(Processor* processor,
                                          oneArgOperFuncPtr operation) {

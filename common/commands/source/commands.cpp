@@ -33,6 +33,7 @@ constexpr CommandStruct COMMANDS[] = {
     {16, "ret"},
     {17, "draw"},
     {18, "in"},
+    {19, "mod"}
 };
 
 // WARNING: be carefull that jump commands in this array and in COMMANDS array are same

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sys/stat.h>
 
 #include "../../common/commands/include/commands.hpp"
 #include "../../common/include/errorsHandlerDefines.hpp"
@@ -76,35 +77,27 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     return PROCESSOR_STATUS_OK;
 }
 
-static ProcessorErrors getNumberOfLines(FILE* file, int* numOfLines) {
+static ProcessorErrors getFileSize(FILE* file, size_t* fileSize) {
     IF_ARG_NULL_RETURN(file);
-    IF_ARG_NULL_RETURN(numOfLines);
+    IF_ARG_NULL_RETURN(fileSize);
 
-    *numOfLines = 0;
-    const char CH_TO_COUNT = '\n';
-    int ch = '?';
-    while ((ch = fgetc(file)) != EOF) {
-        *numOfLines += ch == CH_TO_COUNT;
+    *fileSize = 0;
+    struct stat buff = {};
+    int status = fstat(fileno(file), &buff);
+    if (status != 0) {
+        return PROCESSOR_ERROR_BAD_FSAT_STATUS;
     }
 
-    LOG_DEBUG_VARS(*numOfLines);
+    *fileSize = buff.st_size;
 
     return PROCESSOR_STATUS_OK;
 }
 
-static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfLines) {
+static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfBytes) {
     IF_ARG_NULL_RETURN(array);
     IF_ARG_NULL_RETURN(file);
 
-    int lineIndex = 0;
-    rewind(file);
-    // line is considered to be already processed, so it's just a single number
-    while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, file) && lineIndex < numOfLines) {
-        int number = atoi(fileLineBuffer); // FIXME: no error check
-        array[lineIndex] = number;
-        LOG_DEBUG_VARS(lineIndex, number);
-        ++lineIndex;
-    }
+    fread(array, numOfBytes, sizeof(uint8_t), file);
 
     return PROCESSOR_STATUS_OK;
 }
@@ -114,20 +107,20 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     IF_ARG_NULL_RETURN(binFileName);
 
     LOG_DEBUG("read binary");
-    FILE* binaryFile = fopen(binFileName, "r");
+    FILE* binaryFile = fopen(binFileName, "rb");
     IF_NOT_COND_RETURN(binaryFile != NULL,
                        PROCESSOR_ERROR_COULDNT_OPEN_FILE);
 
-    int numOfLines = 0;
-    LOG_DEBUG("ok");
-    ProcessorErrors error = getNumberOfLines(binaryFile, &numOfLines);
+    size_t numOfBytes = 0;
+    ProcessorErrors error = getFileSize(binaryFile, &numOfBytes);
     IF_ERR_RETURN(error);
+    LOG_DEBUG_VARS(numOfBytes);
 
-    processor->numberOfInstructions = numOfLines;
-    processor->programCode = (uint8_t*)calloc(numOfLines, sizeof(uint8_t));
+    processor->numberOfInstructions = numOfBytes;
+    processor->programCode = (uint8_t*)calloc(numOfBytes, sizeof(uint8_t));
     IF_NOT_COND_RETURN(processor->programCode,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
-    error = readCommandsFromFileToArray(processor->programCode, binaryFile, numOfLines);
+    error = readCommandsFromFileToArray(processor->programCode, binaryFile, numOfBytes);
     IF_ERR_RETURN(error);
 
     return PROCESSOR_STATUS_OK;
@@ -157,7 +150,8 @@ ProcessorCommandsStruct processorCommandsArr[] = {
     {"call", procCommandCallFunc},
     {"ret",  procCommandReturnFromFunc},
     {"draw", procCommandDrawFunc},
-    {"in",   procCommandInFromTerminal}
+    {"in",   procCommandInFromTerminal},
+    {"mod",  mod2numsFunc},
 };
 
 const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);

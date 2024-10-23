@@ -26,6 +26,16 @@ processor_data_type div2nums(processor_data_type a, processor_data_type b) {
     return a / b;
 }
 
+processor_data_type mod2nums(processor_data_type a, processor_data_type b) {
+    if (b == 0) {
+        // FIXME: maybe throw some error, or move error message to errors handler
+        LOG_ERROR("zero division");
+        return 0;
+    }
+
+    return a % b;
+}
+
 // WARNING: processor_data_type can be integer
 processor_data_type sinOperation(processor_data_type a) {
     return sinl(a);
