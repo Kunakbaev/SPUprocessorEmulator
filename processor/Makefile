@@ -35,10 +35,10 @@ CFLAGS += -I $(STACK_EXT_LIB_DIR)/include
 $(LIB_RUN_NAME): $(OBJ)
 	@echo $(SRC)
 	@make -C $(COMMANDS_DIR)
-	$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) $(SFML_LIBS) -l$(MY_LOG_LIB_NAME) -L$(STACK_EXT_LIB_DIR) -l:$(STACK_LIB_NAME) $(CFLAGS)
+	@$(CC) $^ $(COMMON_OBJ) -o $(BUILD_DIR)/$(LIB_RUN_NAME) $(SFML_LIBS) -l$(MY_LOG_LIB_NAME) -L$(STACK_EXT_LIB_DIR) -l:$(STACK_LIB_NAME) $(CFLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
-	$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
+	@$(CC) -c $< $(CFLAGS) -o $@ $(ASSERT_DEFINE)
 
 run: $(LIB_RUN_NAME)
 	./building/$(LIB_RUN_NAME)

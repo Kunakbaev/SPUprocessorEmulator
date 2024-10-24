@@ -132,9 +132,10 @@ ProcessorErrors executeOperationWith1Arg(Processor* processor,
     return PROCESSOR_STATUS_OK;
 }
 
-#define PROCESSOR_COMMAND_FUNC_WITH_1_ARG(funcName, operationFuncPtr)              \
-    ProcessorErrors funcName(Processor* processor) {                                \
-        IF_ERR_RETURN(executeOperationWith1Arg(processor, operationFuncPtr));      \
+#define PROCESSOR_COMMAND_FUNC_WITH_1_ARG(funcName, operationFuncPtr)           \
+    ProcessorErrors funcName(Processor* processor) {                            \
+        IF_ERR_RETURN(executeOperationWith1Arg(processor, operationFuncPtr));   \
+        return PROCESSOR_STATUS_OK;                                             \
     }
 
 PROCESSOR_COMMAND_FUNC_WITH_1_ARG(sqrt1numFunc, sqrt1num);
@@ -154,12 +155,12 @@ static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, process
     int mask = code[*instructionPointer];
     ++(*instructionPointer);
     LOG_DEBUG_VARS(mask);
-    if (mask & 1) {
+    if (mask & HAS_NUM_ARG) {
         *arg = (processor_data_type*)(code + (*instructionPointer));
         LOG_DEBUG_VARS(code[*instructionPointer], *arg);
         (*instructionPointer) += sizeof(processor_data_type);
     }
-    if (mask & 2) {
+    if (mask & HAS_REG_ARG) {
         // TODO: check that this works
         processor_data_type* num = &processor->registers[code[*instructionPointer]];
         LOG_DEBUG_VARS(code[*instructionPointer], processor->registers[code[*instructionPointer]]);
@@ -172,7 +173,7 @@ static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, process
         }
         ++(*instructionPointer);
     }
-    if (mask & 4) {
+    if (mask & HAS_RAM_ARG) {
         // WARNING: bad cast, from processor data type to size_t
         size_t memoryIndex = **arg;
         LOG_DEBUG_VARS(memoryIndex, processor->ram.memory[memoryIndex]);
@@ -265,6 +266,23 @@ static size_t getJumpInstructionPointer(Processor* processor) {
     return res;
 }
 
+ProcessorErrors meowFunc(Processor* processor) {
+    processor_data_type number_1 = 0;
+    Errors error = popElementToStack(&processor->stackOfVars, &number_1);
+    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
+    for (size_t i = 0; i < number_1; ++i) {
+        printf("meow\n");
+    }
+
+    printf("end\n");
+    return PROCESSOR_STATUS_OK;
+}
+
 ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr comparator) {
     IF_ARG_NULL_RETURN(processor->programCode);
 
@@ -309,6 +327,7 @@ ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr
     ProcessorErrors funcName(Processor* processor) {                            \
         LOG_DEBUG_VARS(funcName);                                               \
         IF_ERR_RETURN(generalJmpCommandFunc(processor, operationFuncPtr));      \
+        return PROCESSOR_STATUS_OK;                                             \
     }                                                                           \
 
 PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpIfEqual, jmpConditionEqual);
@@ -319,8 +338,13 @@ PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpAnyway,  NULL);
 ProcessorErrors procCommandCallFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    int tmp = processor->instructionPointer + sizeof(int); // tmp var, just in case
+    size_t tmp = processor->instructionPointer + sizeof(int); // tmp var, just in case
     Errors error = pushElementToStack(&processor->stackOfCalls, &tmp);
+    if (error != STATUS_OK) {
+        LOG_ERROR(getErrorMessage(error));
+        return PROCESSOR_ERROR_STACK_ERROR;
+    }
+
     LOG_DEBUG_VARS("call function", processor->instructionPointer);
     IF_ERR_RETURN(procCommandJumpAnyway(processor));
 
@@ -330,7 +354,7 @@ ProcessorErrors procCommandCallFunc(Processor* processor) {
 ProcessorErrors procCommandReturnFromFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    int tmp = 0; // tmp var, just in case
+    size_t tmp = 0; // tmp var, just in case
     Errors error = popElementToStack(&processor->stackOfCalls, &tmp);
     LOG_DEBUG_VARS("return", processor->instructionPointer, tmp);
     //IF_ERR_RETURN(procCommandJumpAnyway(processor));

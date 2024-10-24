@@ -12,6 +12,7 @@ ProcessorErrors procCommandCallFunc(Processor* processor);
 ProcessorErrors procCommandReturnFromFunc(Processor* processor);
 ProcessorErrors procCommandDrawFunc(Processor* processor);
 ProcessorErrors procCommandInFromTerminal(Processor* processor);
+ProcessorErrors meowFunc(Processor* processor);
 
 #define PROCESSOR_COMMAND_METHOD_DECL(funcName) \
     ProcessorErrors funcName(Processor* processor)

@@ -26,8 +26,68 @@ const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
+typedef ProcessorErrors (normalCommandFuncPtr)(Processor* processor);
+
+struct ProcessorCommandsStruct {
+    const char* commandName;        // NOTE: will leave this field for debug purposes
+    normalCommandFuncPtr* funcPtr;
+};
+
+ProcessorCommandsStruct processorCommandsArr[] = {
+    {"push", pushToProcessorStackFunc},
+    {"add",  add2numsFunc},
+    {"sub",  sub2numsFunc},
+    {"mul",  mul2numsFunc},
+    {"div",  div2numsFunc},
+    {"out",  popAndPrintLastVarInStackFunc},
+    {"halt", haltCommandFunc},
+    {"pop",  popFromProcessorStackFunc},
+    {"pick", lookLastVarInVarStackFunc},
+    {"jmp",  procCommandJumpAnyway},
+    {"jb",   procCommandJumpIfBelow},
+    {"ja",   procCommandJumpIfMore},
+    {"je",   procCommandJumpIfEqual},
+    {"call", procCommandCallFunc},
+    {"ret",  procCommandReturnFromFunc},
+    {"draw", procCommandDrawFunc},
+    {"in",   procCommandInFromTerminal},
+    {"mod",  mod2numsFunc},
+    {"sqrt", sqrt1numFunc},
+    {"meow", meowFunc},
+};
+
+const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
+
+// static bool areCommandStructsEqual(const CommandStruct* first,
+//                                    const CommandStruct* second) {
+//     assert(first  != NULL);
+//     assert(second != NULL);
+//
+//     return first->commandIndex == second->commandIndex &&
+//            first->commandName  == second->commandName;
+// }
+
+static ProcessorErrors checkThat2CommandsArraysMatch() {
+    for (size_t commandInd = 0; commandInd < PROCESSOR_COMMANDS_ARR_SIZE; ++commandInd) {
+        CommandStruct command = {};
+        CommandErrors error = getCommandByIndex(commandInd + 1, &command);
+        if (error != COMMANDS_STATUS_OK) {
+            LOG_ERROR(getCommandsErrorMessage(error));
+            return PROCESSOR_ERROR_COMMANDS_ERROR;
+        }
+
+        if (strcmp(command.commandName, processorCommandsArr[commandInd].commandName) != 0) {
+            return PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON;
+        }
+    }
+
+    return PROCESSOR_STATUS_OK;
+}
+
 ProcessorErrors ProcessorConstructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
+
+    IF_ERR_RETURN(checkThat2CommandsArraysMatch());
 
     *processor = {}; // name constants ~~~~~|
     // FIXME: const int initialCapacity = 8;
@@ -37,16 +97,6 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
         LOG_ERROR(getErrorMessage(error));
         return PROCESSOR_ERROR_STACK_ERROR;
     }
-
-    // int x = 10;
-    // pushElementToStack(&processor->stackOfVars, &x);
-    // exit(0);
-//
-//
-
-
-
-
 
     // ASK: copypaste?
     error = constructStack(&processor->stackOfCalls, initialCapacity, sizeof(size_t));
@@ -93,7 +143,7 @@ static ProcessorErrors getFileSize(FILE* file, size_t* fileSize) {
     return PROCESSOR_STATUS_OK;
 }
 
-static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, int numOfBytes) {
+static ProcessorErrors readCommandsFromFileToArray(uint8_t* array, FILE* file, size_t numOfBytes) {
     IF_ARG_NULL_RETURN(array);
     IF_ARG_NULL_RETURN(file);
 
@@ -126,50 +176,24 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
     return PROCESSOR_STATUS_OK;
 }
 
-typedef ProcessorErrors (normalCommandFuncPtr)(Processor* processor);
-
-struct ProcessorCommandsStruct {
-    const char* commandName;
-    normalCommandFuncPtr* funcPtr;
-};
-
-ProcessorCommandsStruct processorCommandsArr[] = {
-    {"halt", haltCommandFunc},
-    {"push", pushToProcessorStackFunc},
-    {"out",  popAndPrintLastVarInStackFunc},
-    {"add",  add2numsFunc},
-    {"pop",  popFromProcessorStackFunc},
-    {"pick", lookLastVarInVarStackFunc},
-    {"sub",  sub2numsFunc},
-    {"mul",  mul2numsFunc},
-    {"div",  div2numsFunc},
-    {"jmp",  procCommandJumpAnyway},
-    {"ja",   procCommandJumpIfMore},
-    {"jb",   procCommandJumpIfBelow},
-    {"je",   procCommandJumpIfEqual},
-    {"call", procCommandCallFunc},
-    {"ret",  procCommandReturnFromFunc},
-    {"draw", procCommandDrawFunc},
-    {"in",   procCommandInFromTerminal},
-    {"mod",  mod2numsFunc},
-    {"sqrt", sqrt1numFunc},
-};
-
-const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
-
-static ProcessorErrors checkProcessorCommands(Processor* processor, const char* commandName) {
+static ProcessorErrors checkProcessorCommands(Processor* processor, size_t commandIndex) {
     IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(commandName);
+    //IF_ARG_NULL_RETURN(commandName);
+    IF_NOT_COND_RETURN(commandIndex < PROCESSOR_COMMANDS_ARR_SIZE,
+                       PROCESSOR_ERROR_INVALID_ARGUMENT);
 
-    for (size_t commandIndex = 0; commandIndex < PROCESSOR_COMMANDS_ARR_SIZE; ++commandIndex) {
-        if (strcmp(processorCommandsArr[commandIndex].commandName, commandName) != 0)
-            continue;
+    ProcessorErrors error = (*processorCommandsArr[commandIndex - 1].funcPtr)(processor);
+    IF_ERR_RETURN(error);
 
-        LOG_DEBUG("----------------------------");
-        LOG_DEBUG_VARS(commandName, commandIndex);
-        ProcessorErrors error = (*processorCommandsArr[commandIndex].funcPtr)(processor);
-        IF_ERR_RETURN(error);
-    }
+//     for (size_t commandIndex = 0; commandIndex < PROCESSOR_COMMANDS_ARR_SIZE; ++commandIndex) {
+//         if (myStrcmp(processorCommandsArr[commandIndex].commandName, commandName) != 0)
+//             continue;
+//
+//         LOG_DEBUG("----------------------------");
+//         LOG_DEBUG_VARS(commandName, commandIndex);
+        // ProcessorErrors error = (*processorCommandsArr[commandIndex].funcPtr)(processor);
+        // IF_ERR_RETURN(error);
+//     }
 
     return PROCESSOR_STATUS_OK;
 }
@@ -193,7 +217,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
             return PROCESSOR_ERROR_COMMANDS_ERROR;
         }
 
-        IF_ERR_RETURN(checkProcessorCommands(processor, command.commandName));
+        IF_ERR_RETURN(checkProcessorCommands(processor, command.commandIndex));
 
         LOG_DEBUG_VARS(processor->instructionPointer, processor->numberOfInstructions);
     }

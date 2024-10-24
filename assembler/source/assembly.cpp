@@ -12,7 +12,7 @@
     COMMON_IF_ARG_NULL_RETURN(arg, ASSEMBLER_ERROR_INVALID_ARGUMENT, getAssemblerErrorMessage)
 
 #define IF_ERR_RETURN(error) \
-    COMMON_IF_ERR_RETURN(error, getAssemblerErrorMessage, COMMANDS_STATUS_OK)
+    COMMON_IF_ERR_RETURN(error, getAssemblerErrorMessage, ASSEMBLER_STATUS_OK)
 
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getAssemblerErrorMessage)
@@ -23,7 +23,7 @@
 const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 const char   COMMENT_BEGIN_CHAR    = ';'; // maybe make it assembler arg
 const size_t MAX_LEN_OF_CODE       = 1 << 10;
-const char* DELIMS = " \n\t";
+const char*  DELIMS = " \n\t";
 
 char* fileLineBuffer;
 
@@ -50,7 +50,17 @@ AssemblerErrors constructAssembler(Assembler* assembler,
     IF_NOT_COND_RETURN(assembler->programCode != NULL,
                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
 
-    constructTableOfLabels();
+    TableOfLabelsErrors error = constructTableOfLabels();
+    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(error));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
+
+    CommandErrors error2 = validateCommands();
+    if (error2 != COMMANDS_STATUS_OK) {
+        LOG_ERROR(getCommandsErrorMessage(error2));
+        return ASSEMBLER_ERROR_COMMAND_ERROR;
+    }
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -305,6 +315,14 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
         return ASSEMBLER_STATUS_OK;
 
     LOG_DEBUG_VARS(lineOfCode, argPtr);
+
+    Label label = {argPtr, -1};
+    TableOfLabelsErrors error2 = addLabelName(&label);
+    if (error2 != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(error2));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
+
     IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
     *is = true;
     *(argPtr - 1) = ' '; // returning string to initial state
@@ -518,7 +536,11 @@ AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
     printf("saving to dest file\n");
     printAllLabels();
 
-    //TableOfLabelsErrors error = checkAllLabelsAreDeclared();
+    TableOfLabelsErrors error = checkAllLabelsAreDeclared();
+    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
+        LOG_ERROR(getTableOfLabelsErrorMessage(error));
+        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
+    }
 
     FILE* destFile = fopen(assembler->destFileName, "wb");
     IF_NOT_COND_RETURN(destFile != NULL,

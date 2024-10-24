@@ -23,18 +23,19 @@ constexpr CommandStruct COMMANDS[] = {
     {5,  "div"},
     {6,  "out"},    // pop last num from stack and than outputs it
     {7,  "halt"},   // ends program
-    {9,  "pop"},    // pop last value from stack to given register
-    {10, "pick"},
-    {11, "jmp"},
-    {12, "jb"},
-    {13, "ja"},
-    {14, "je"},
-    {15, "call"},
-    {16, "ret"},
-    {17, "draw"},
-    {18, "in"},
-    {19, "mod"},
-    {20, "sqrt"}
+    {8,  "pop"},    // pop last value from stack to given register
+    {9,  "pick"},
+    {10, "jmp"},
+    {11, "jb"},
+    {12, "ja"},
+    {13, "je"},
+    {14, "call"},
+    {15, "ret"},
+    {16, "draw"},
+    {17, "in"},
+    {18, "mod"},
+    {19, "sqrt"},
+    {20, "meow"},
 };
 
 // WARNING: be carefull that jump commands in this array and in COMMANDS array are same
@@ -49,6 +50,17 @@ const size_t NUM_OF_JUMP_COMMANDS = sizeof(JUMP_COMMANDS) / sizeof(*JUMP_COMMAND
 const char* registerNames[] = { "?", "AX", "BX", "CX", "DX" };
 
 const size_t NUM_OF_REGS          = sizeof(registerNames) / sizeof(*registerNames) - 1;
+
+// checks that command index - 1 (one indexation to reduce errors) is equal to array index
+CommandErrors validateCommands() {
+    for (size_t commandInd = 0; commandInd < NUM_OF_COMMANDS; ++commandInd) {
+        if (COMMANDS[commandInd].commandIndex - 1 != commandInd) {
+            return COMMANDS_ERROR_BAD_COMMAND_INDEX_FORMAT;
+        }
+    }
+
+    return COMMANDS_STATUS_OK;
+}
 
 CommandErrors findRegName(const char* name, int* ind) {
     IF_ARG_NULL_RETURN(name);
@@ -91,7 +103,7 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
     for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
         // FIXME: too slow
         // can write hash function check for this
-        // LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
+        LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
         if (strcmp(commandName, COMMANDS[commandIndex].commandName) == 0) {
             *result = COMMANDS[commandIndex];
             return COMMANDS_STATUS_OK;
@@ -103,17 +115,21 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
 
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result) {
     IF_ARG_NULL_RETURN(result);
+    IF_NOT_COND_RETURN(index - 1 < NUM_OF_COMMANDS,
+                       COMMANDS_ERROR_INVALID_ARGUMENT); // TODO: add error
+
+    *result = COMMANDS[index - 1];
+    return COMMANDS_STATUS_OK;
 
     // TODO: remove for
-    result->commandName = "?"; // in case if not found
-    for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
-        // FIXME: too slow?
-        // can write hash function check for this
-        if (COMMANDS[commandIndex].commandIndex == index) {
-            *result = COMMANDS[commandIndex];
-            return COMMANDS_STATUS_OK;
-        }
-    }
-
-    return COMMANDS_ERROR_COMMAND_NOT_FOUND;
+    // result->commandName = "?"; // in case if not found
+    // for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
+    //     // FIXME: too slow?
+    //     // can write hash function check for this
+    //     if (COMMANDS[commandIndex].commandIndex == index) {
+    //         *result = COMMANDS[commandIndex];
+    //         return COMMANDS_STATUS_OK;
+    //     }
+    // }
+    // return COMMANDS_ERROR_COMMAND_NOT_FOUND;
 }

@@ -15,6 +15,11 @@
     } while(0)
 
 int main() {
+    // for (int i = 0; i < 100; ++i) {
+    //     printf("\a");
+    // }
+    // return 0;
+
     // setLoggingLevel(DEBUG);
     LOG_DEBUG("Compiling program (transfer between 'compiler' code and 'working program'!\n");
 

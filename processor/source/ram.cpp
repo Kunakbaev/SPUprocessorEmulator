@@ -71,16 +71,17 @@ RamStructErrors setRamVarByIndex(const RamStruct* ram, size_t index, processor_d
     return RAM_STATUS_OK;
 }
 
-RamStructErrors drawRamMemorySimpleConsoleVersion(const RamStruct* ram) {
+static RamStructErrors drawRamMemorySimpleConsoleVersion(const RamStruct* ram) {
     IF_ARG_NULL_RETURN(ram);
     IF_ARG_NULL_RETURN(ram->memory);
 
     printf("----------------------------\n");
     printf("RAM: \n");
+    // slow
     for (size_t varInd = 0, colInd = 1; varInd < ram->memorySize; ++varInd, ++colInd) {
         // TODO: sfml + graphicaly draw pixels
         // ASK: is type cast good?
-        putchar(ram->memory[varInd] == 255 ? '@' : ' ');
+        putchar((uint8_t)ram->memory[varInd] == 255 ? '@' : ' ');
 
         // //#ifndef NDEBUG
         //     sleep(RAM_OPERATION_LATENCY);
@@ -97,7 +98,7 @@ RamStructErrors drawRamMemorySimpleConsoleVersion(const RamStruct* ram) {
 
 // RamStructErrors fillRectangleAtCoords
 
-RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
+static RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
     IF_ARG_NULL_RETURN(ram);
     IF_ARG_NULL_RETURN(ram->memory);
 
@@ -111,16 +112,17 @@ RamStructErrors drawRamMemoryGraphicalVersion(const RamStruct* ram) {
             ram->screen->close();
     }
 
-    // LOG_ERROR("dfas;l---------------------------------");
+    // very slow
     ram->screen->clear();
-    // LOG_DEBUG("ok");
     for (size_t varInd = 0; varInd < ram->memorySize; ++varInd) {
         int x = varInd % MATRIX_SIDE_SIZE, y = varInd / MATRIX_SIDE_SIZE;
         x *= TILE_SIZE;
         y *= TILE_SIZE;
 
-        int color = (rand() & 1) ? 255 : 0;
-        color = ram->memory[varInd];
+        uint8_t color = (rand() & 1) ? 255 : 0;
+        color = (uint8_t)ram->memory[varInd];
+        if (color == 0) continue; // we don't need to draw square if it's black
+
         sf::RectangleShape square(sf::Vector2f(TILE_SIZE, TILE_SIZE));
         square.setFillColor(sf::Color(color, color, color, 255));
         square.setPosition((float)x, (float)y);

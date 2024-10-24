@@ -19,6 +19,10 @@ const char* getProcessorErrorMessage(ProcessorErrors error) {
             return "Processor error: error couldn't get file size.\n";
         case PROCESSOR_ERROR_STACK_ERROR:
             return "Processor error: error occured in stack sublib.\n";
+        case PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON:
+            return "Processor error: array of commands in processor is not equal to array with same commands in common/commands folder (probably just wrong order of commands).\n";
+        case PROCESSOR_ERROR_BAD_INS_POINTER:
+            return "Processor error: bad instruction pointer.\n";
 
         default:
             return "Unknown error.\n";

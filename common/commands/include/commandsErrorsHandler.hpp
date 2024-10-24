@@ -11,6 +11,7 @@ enum CommandErrors {
     COMMANDS_ERROR_COMMAND_NOT_FOUND                     = 5,
     COMMANDS_ERROR_STACK_ERROR                           = 6,                  // error occured in stack sublib
     COMMANDS_ERROR_BAD_INSTR_PTR                         = 7,                  // instruction pointer is invalid (possibly not enough values in processor->program_code)
+    COMMANDS_ERROR_BAD_COMMAND_INDEX_FORMAT              = 8,                  // check that command index - 1 (one indexation to reduce errors) is equal to array index failed
 };
 
 const char* getCommandsErrorMessage(CommandErrors error);

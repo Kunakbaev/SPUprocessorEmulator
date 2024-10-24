@@ -14,6 +14,7 @@ enum ProcessorErrors {
     PROCESSOR_ERROR_COMMANDS_ERROR                        = 7,
     PROCESSOR_ERROR_RAM_ERROR                             = 8,
     PROCESSOR_ERROR_BAD_FSAT_STATUS                       = 9,
+    PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON     = 10,
 };
 
 const char* getProcessorErrorMessage(ProcessorErrors error);

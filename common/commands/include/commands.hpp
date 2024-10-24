@@ -24,8 +24,8 @@ struct CommandStruct {
 //     DUMP_COMMAND        = 9
 // };
 
+CommandErrors validateCommands();
 CommandErrors findRegName(const char* name, int* ind);
-
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result);
 CommandErrors getCommandByIndex(size_t index, CommandStruct* result);
 CommandErrors isJumpCommand(const char* commandName, bool* is);

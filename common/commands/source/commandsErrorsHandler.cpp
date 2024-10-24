@@ -19,6 +19,8 @@ const char* getCommandsErrorMessage(CommandErrors error) {
             return "Commands error: error occured in stack sublib.\n";
         case COMMANDS_ERROR_BAD_INSTR_PTR:
             return "Commands error: instruction pointer is invalid (possibly not enough values in processor->program_code).\n";
+        case COMMANDS_ERROR_BAD_COMMAND_INDEX_FORMAT:
+            return "Commands error: error, check that command index - 1 (one indexation to reduce errors) is equal to array index failed.\n";
 
         default:
             return "Unknown error.\n";
