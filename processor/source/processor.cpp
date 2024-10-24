@@ -152,6 +152,7 @@ ProcessorCommandsStruct processorCommandsArr[] = {
     {"draw", procCommandDrawFunc},
     {"in",   procCommandInFromTerminal},
     {"mod",  mod2numsFunc},
+    {"sqrt", sqrt1numFunc},
 };
 
 const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);

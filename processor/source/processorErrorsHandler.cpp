@@ -17,6 +17,8 @@ const char* getProcessorErrorMessage(ProcessorErrors error) {
             return "Processor error: error occured in ram sublib.\n";
         case PROCESSOR_ERROR_BAD_FSAT_STATUS:
             return "Processor error: error couldn't get file size.\n";
+        case PROCESSOR_ERROR_STACK_ERROR:
+            return "Processor error: error occured in stack sublib.\n";
 
         default:
             return "Unknown error.\n";

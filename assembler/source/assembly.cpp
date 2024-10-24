@@ -271,18 +271,19 @@ static AssemblerErrors tryLabel(Assembler* assembler, char* line, bool* is) {
 
 static AssemblerErrors saveLabelCode(Assembler* assembler, const char* arg) {
     IF_ARG_NULL_RETURN(arg);
-    // TODO: number of line of code may exceed 255
-    // WARNING:
 
     Label label = {};
     TableOfLabelsErrors err = getNumOfCodeLineByLabel(arg, &label);
+    LOG_DEBUG_VARS(arg, label.codeLineInd, label.labelName);
     if (err != TABLE_OF_LABELS_ERROR_STATUS_OK) {
         LOG_ERROR(getTableOfLabelsErrorMessage(err));
         return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
     }
 
     // LOG_DEBUG_VARS(lineOfCode, argPtr, label.codeLineInd);
-    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
+    //IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
+    //addNumBytes(assembler, label.codeLineInd);
+    saveBytesToArray(assembler, (const uint8_t*)&label.codeLineInd, 4);
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -303,6 +304,7 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
     if (!*is)
         return ASSEMBLER_STATUS_OK;
 
+    LOG_DEBUG_VARS(lineOfCode, argPtr);
     IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
     *is = true;
     *(argPtr - 1) = ' '; // returning string to initial state
@@ -341,10 +343,10 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     IF_ARG_NULL_RETURN(lineOfCode);
 
-    bool is = false;
-    IF_ERR_RETURN(tryLabel(assembler, lineOfCode, &is));
+    bool success = false;
+    IF_ERR_RETURN(tryLabel(assembler, lineOfCode, &success));
     //LOG_DEBUG_VARS(lineOfCode, is);
-    if (is) {
+    if (success) {
         return ASSEMBLER_STATUS_OK;
     }
 
@@ -360,14 +362,27 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     IF_ERR_RETURN(removeAllSpaceFromArgument(argPtr));
 
-    is = false;
-    IF_ERR_RETURN(tryJumpCommand(assembler, lineOfCode, argPtr, &is));
+    success = false;
+    IF_ERR_RETURN(tryJumpCommand(assembler, lineOfCode, argPtr, &success));
     //LOG_DEBUG_VARS(is);
-    if (is) {
+    if (success) {
         return ASSEMBLER_STATUS_OK;
     }
+    /**
 
-    // WTF???
+        CMD + ARGS
+        I) parse together
+
+        II) args: {address, is_label, is_ram, is_imm, is_reg, imm, reg}
+                ax
+                5
+                ax+5
+                [ax+5]
+                [5]
+                [ax]
+                label
+     */
+
     int mask   = 0;
     int numArg = -1,
         regArg = -1;
@@ -500,13 +515,15 @@ AssemblerErrors processCodeLines(Assembler* assembler) {
 AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
+    printf("saving to dest file\n");
+    printAllLabels();
+
+    //TableOfLabelsErrors error = checkAllLabelsAreDeclared();
+
     FILE* destFile = fopen(assembler->destFileName, "wb");
     IF_NOT_COND_RETURN(destFile != NULL,
                        ASSEMBLER_ERROR_COULDNT_OPEN_FILE);
 
-    // TODO: save to binary file
-    printf("saving to dest file\n");
-    printAllLabels();
     fwrite(assembler->programCode, assembler->numOfBytesInDest, sizeof(uint8_t), destFile);
 
     fclose(destFile);

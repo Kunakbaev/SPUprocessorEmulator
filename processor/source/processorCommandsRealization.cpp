@@ -24,7 +24,12 @@ static ProcessorErrors popPrintLastVarFromVarStackAndReturnIt(Processor* process
     }
 
     // FIXME: do something with different types
-    printf("last in stack : %d\n", *number);
+    if (sizeof(processor_data_type) == 4) { // FIXME: bruh, what the hell?
+        printf("last in stack : %d\n", *number);
+    } else {
+        printf("last in stack : %Lg\n", *number);
+    }
+
     LOG_DEBUG_VARS("last in stack : ", *number);
 
     return PROCESSOR_STATUS_OK;
@@ -91,12 +96,13 @@ ProcessorErrors executeOperationWith2Args(Processor* processor,
 #define PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(funcName, operationFuncPtr)              \
     ProcessorErrors funcName(Processor* processor) {                                \
         IF_ERR_RETURN(executeOperationWith2Args(processor, operationFuncPtr));      \
+        return PROCESSOR_STATUS_OK;                                                 \
     }                                                                               \
 
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(add2numsFunc,            add2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc,            sub2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc,            mul2nums);
-PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc,            div2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(add2numsFunc, add2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc, sub2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc, mul2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc, div2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mod2numsFunc, mod2nums);
 
 ProcessorErrors executeOperationWith1Arg(Processor* processor,
@@ -125,6 +131,13 @@ ProcessorErrors executeOperationWith1Arg(Processor* processor,
 
     return PROCESSOR_STATUS_OK;
 }
+
+#define PROCESSOR_COMMAND_FUNC_WITH_1_ARG(funcName, operationFuncPtr)              \
+    ProcessorErrors funcName(Processor* processor) {                                \
+        IF_ERR_RETURN(executeOperationWith1Arg(processor, operationFuncPtr));      \
+    }
+
+PROCESSOR_COMMAND_FUNC_WITH_1_ARG(sqrt1numFunc, sqrt1num);
 
 static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, processor_data_type** arg) {
     IF_ARG_NULL_RETURN(processor);
@@ -244,12 +257,20 @@ ProcessorErrors haltCommandFunc(Processor* processor) {
     return PROCESSOR_STATUS_OK;
 }
 
+static size_t getJumpInstructionPointer(Processor* processor) {
+    assert(processor != NULL);
+    size_t res = *((int*)(processor->programCode + processor->instructionPointer));
+    //processor->instructionPointer += sizeof(int);
+    LOG_DEBUG_VARS(res, processor->programCode[processor->instructionPointer],  processor->programCode[processor->instructionPointer + 1],  processor->programCode[processor->instructionPointer + 2]);
+    return res;
+}
+
 ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr comparator) {
     IF_ARG_NULL_RETURN(processor->programCode);
 
     if (comparator == NULL) { // that's jmp command, without any conditions
         // WARNING: endless loop can happen
-        processor->instructionPointer = processor->programCode[processor->instructionPointer];
+        processor->instructionPointer = getJumpInstructionPointer(processor);
         //++(processor->instructionPointer);
         return PROCESSOR_STATUS_OK;
     }
@@ -275,9 +296,10 @@ ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr
     LOG_DEBUG_VARS(number_1, number_2, operationResult);
 
     if (operationResult) { // jump happens
-        processor->instructionPointer = processor->programCode[processor->instructionPointer];
+        processor->instructionPointer = getJumpInstructionPointer(processor);
+        LOG_DEBUG_VARS(processor->instructionPointer);
     } else { // no jump
-        ++processor->instructionPointer;
+        processor->instructionPointer += sizeof(int);
     }
 
     return PROCESSOR_STATUS_OK;
@@ -297,7 +319,7 @@ PROCESSOR_GENERAL_JUMP_COMMAND(procCommandJumpAnyway,  NULL);
 ProcessorErrors procCommandCallFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    int tmp = processor->instructionPointer + 1; // tmp var, just in case
+    int tmp = processor->instructionPointer + sizeof(int); // tmp var, just in case
     Errors error = pushElementToStack(&processor->stackOfCalls, &tmp);
     LOG_DEBUG_VARS("call function", processor->instructionPointer);
     IF_ERR_RETURN(procCommandJumpAnyway(processor));
@@ -335,7 +357,12 @@ ProcessorErrors procCommandInFromTerminal(Processor* processor) {
 
     processor_data_type number = 0; // FIXME: doesn't work with double
     printf("print your number: ");
-    scanf("%d", &number);
+
+    if (sizeof(processor_data_type) == 4) { // FIXME: bruh, what the hell?
+        scanf("%d", &number);
+    } else {
+        scanf("%Lg", &number);
+    }
 
     Errors error = pushElementToStack(&processor->stackOfVars, &number);
     if (error != STATUS_OK) {

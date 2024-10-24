@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <cstddef>
 
-typedef int processor_data_type;
+typedef long double processor_data_type;
 
 const int NUM_OF_REGISTERS         = 4;
 const size_t SIZE_OF_REGISTER      = 1;

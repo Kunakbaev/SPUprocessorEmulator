@@ -33,7 +33,12 @@ processor_data_type mod2nums(processor_data_type a, processor_data_type b) {
         return 0;
     }
 
-    return a % b;
+    // FIXME: what to do with this?
+    return (int)a % (int)b;
+}
+
+processor_data_type sqrt1num(processor_data_type a) {
+    return sqrt(a);
 }
 
 // WARNING: processor_data_type can be integer

@@ -19,6 +19,7 @@ processor_data_type sinOperation(processor_data_type a);
 // WARNING: processor_data_type can be integer
 processor_data_type cosOperation(processor_data_type a);
 processor_data_type absOperation(processor_data_type a);
+processor_data_type sqrt1num(processor_data_type a);
 
 bool jmpConditionEqual(processor_data_type a, processor_data_type b);
 bool jmpConditionLess(processor_data_type a, processor_data_type b);
