@@ -10,21 +10,47 @@
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getProcessorErrorMessage)
 
+#define STACK_LIB_ERR_CHECK(error)                                     \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getErrorMessage,             \
+        STATUS_OK, PROCESSOR_ERROR_STACK_ERROR)
+
+#define RAM_MODULE_ERR_CHECK(error)                                    \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getRamErrorMessage,          \
+        RAM_STATUS_OK, PROCESSOR_ERROR_RAM_ERROR)
+
+// pops element from processor->$(stackVarName) and stores it to $(whereToStore) variable
+#define POP(stackVarName, whereToStore) \
+    do { \
+        STACK_LIB_ERR_CHECK(popElementToStack(&processor->stackVarName, whereToStore));   \
+    } while (0)
+
+#define PUSH(stackVarName, element) \
+    do { \
+        STACK_LIB_ERR_CHECK(pushElementToStack(&processor->stackVarName, element));   \
+    } while (0)
+
+// pops from stack of vars  to a given variable, can return error
+#define POP_VAR(whereToStore)  POP (stackOfVars,  whereToStore)
+
+// pops from stack of calls to a given variable, can return error
+#define POP_CALL(whereToStore) POP (stackOfCalls, whereToStore)
+
+// pushes to stack of vars given variable, can return error
+#define PUSH_VAR(element)      PUSH(stackOfVars,  element)
+
+// pushes to stack of calls given variable, can return error
+#define PUSH_CALL(element)     PUSH(stackOfCalls, element)
+
 static ProcessorErrors popPrintLastVarFromVarStackAndReturnIt(Processor* processor,
                                                               processor_data_type* number) {
     IF_ARG_NULL_RETURN(processor);
     IF_ARG_NULL_RETURN(number);
 
     *number = 0;
-    LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    Errors error = popElementToStack(&processor->stackOfVars, number);
-    if (error != NULL) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    POP_VAR(number);
 
-    // FIXME: do something with different types
-    if (sizeof(processor_data_type) == 4) { // FIXME: bruh, what the hell?
+    //const char* format = sizeof(processor_data_type) == 4 ? "%df"
+    if (sizeof(processor_data_type) == 4) {
         printf("last in stack : %d\n", *number);
     } else {
         printf("last in stack : %Lg\n", *number);
@@ -40,12 +66,7 @@ ProcessorErrors lookLastVarInVarStackFunc(Processor* processor) {
 
     processor_data_type num = 0;
     IF_ERR_RETURN(popPrintLastVarFromVarStackAndReturnIt(processor, &num));
-
-    Errors error = pushElementToStack(&processor->stackOfVars, &num);
-    if (error != NULL) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    PUSH_VAR(&num);
 
     return PROCESSOR_STATUS_OK;
 }
@@ -66,29 +87,12 @@ ProcessorErrors executeOperationWith2Args(Processor* processor,
 
     processor_data_type number_1 = 0;
     processor_data_type number_2 = 0;
-    // TODO: define for checking error from separate lib or function
-    LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    Errors error = popElementToStack(&processor->stackOfVars, &number_2);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    POP_VAR(&number_2);
+    POP_VAR(&number_1);
 
-    error = popElementToStack(&processor->stackOfVars, &number_1);
-    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
     processor_data_type operationResult = (*operation)(number_1, number_2);
     LOG_DEBUG_VARS(number_1, number_2, operationResult);
-
-    error = pushElementToStack(&processor->stackOfVars, &operationResult);
-    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    PUSH_VAR(&operationResult);
 
     return PROCESSOR_STATUS_OK;
 }
@@ -111,23 +115,11 @@ ProcessorErrors executeOperationWith1Arg(Processor* processor,
     IF_ARG_NULL_RETURN(operation);
 
     processor_data_type argument = 0;
-    // TODO: define for checking error from separate lib or function
-    LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    Errors error = popElementToStack(&processor->stackOfVars, &argument);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    POP_VAR(&argument);
 
     processor_data_type operationResult = (*operation)(argument);
     LOG_DEBUG_VARS(argument, operationResult);
-
-    error = pushElementToStack(&processor->stackOfVars, &operationResult);
-    LOG_DEBUG_VARS(&processor->stackOfVars.numberOfElements);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    PUSH_VAR(&operationResult);
 
     return PROCESSOR_STATUS_OK;
 }
@@ -157,19 +149,16 @@ static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, process
     LOG_DEBUG_VARS(mask);
     if (mask & HAS_NUM_ARG) {
         *arg = (processor_data_type*)(code + (*instructionPointer));
-        LOG_DEBUG_VARS(code[*instructionPointer], *arg);
         (*instructionPointer) += sizeof(processor_data_type);
     }
     if (mask & HAS_REG_ARG) {
-        // TODO: check that this works
         processor_data_type* num = &processor->registers[code[*instructionPointer]];
         LOG_DEBUG_VARS(code[*instructionPointer], processor->registers[code[*instructionPointer]]);
-        if (mask & 1) {
+        if (mask & HAS_NUM_ARG) {
             result = **arg + *num;
-            LOG_DEBUG_VARS(result, **arg, *num);
-            *arg    = &result;
+            *arg   = &result;
         } else {
-            *arg    = num;
+            *arg   = num;
         }
         ++(*instructionPointer);
     }
@@ -177,73 +166,44 @@ static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, process
         // WARNING: bad cast, from processor data type to size_t
         size_t memoryIndex = **arg;
         LOG_DEBUG_VARS(memoryIndex, processor->ram.memory[memoryIndex]);
-        RamStructErrors error = getRamVarByIndex(&processor->ram, memoryIndex, arg);
-        if (error != RAM_STATUS_OK) {
-            LOG_DEBUG(getRamErrorMessage(error));
-            return PROCESSOR_ERROR_RAM_ERROR;
-        }
+        RAM_MODULE_ERR_CHECK(getRamVarByIndex(&processor->ram, memoryIndex, arg));
     }
+
+    return PROCESSOR_STATUS_OK;
+}
+
+// executes push command if isPush flag is set to true, otherwise makes pop
+ProcessorErrors pushOrPopProcessorStackCommonFunc(Processor* processor, bool isPush) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(processor->programCode);
+
+    uint8_t* code              = processor->programCode;
+    size_t* instructionPointer = &processor->instructionPointer;
+    IF_ARG_NULL_RETURN(instructionPointer);
+
+    IF_NOT_COND_RETURN(processor->instructionPointer < processor->numberOfInstructions,
+                       PROCESSOR_ERROR_BAD_INS_POINTER);
+
+    processor_data_type argNumber = 0;
+    processor_data_type*   argPtr = &argNumber;
+    IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, &argPtr));
+    LOG_DEBUG_VARS(*argPtr);
+
+    if (isPush)
+        PUSH_VAR(argPtr);
+    else
+        POP_VAR(argPtr);
 
     return PROCESSOR_STATUS_OK;
 }
 
 ProcessorErrors pushToProcessorStackFunc(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(processor->programCode);
-
-    uint8_t* code              = processor->programCode;
-    size_t* instructionPointer = &processor->instructionPointer;
-    IF_ARG_NULL_RETURN(instructionPointer);
-
-    IF_NOT_COND_RETURN(processor->instructionPointer < processor->numberOfInstructions,
-                       PROCESSOR_ERROR_BAD_INS_POINTER);
-
-    processor_data_type argNumber = 0;
-    processor_data_type*   argPtr = &argNumber; // FIXME: cringe
-    IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, &argPtr));
-    LOG_DEBUG_VARS(*argPtr);
-
-    // Errors err = dumpStackLog(&processor->stackOfVars);
-    // LOG_ERROR(getErrorMessage(err));
-    // LOG_DEBUG("ok");
-
-    Errors error = pushElementToStack(&processor->stackOfVars, argPtr);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
+    IF_ERR_RETURN(pushOrPopProcessorStackCommonFunc(processor, true));
     return PROCESSOR_STATUS_OK;
 }
 
-// FIXME: copy paste
 ProcessorErrors popFromProcessorStackFunc(Processor* processor) {
-    IF_ARG_NULL_RETURN(processor);
-    IF_ARG_NULL_RETURN(processor->programCode);
-
-    uint8_t* code              = processor->programCode;
-    size_t* instructionPointer = &processor->instructionPointer;
-    IF_ARG_NULL_RETURN(instructionPointer);
-
-    IF_NOT_COND_RETURN(processor->instructionPointer < processor->numberOfInstructions,
-                       PROCESSOR_ERROR_BAD_INS_POINTER);
-
-    processor_data_type argNumber = 0;
-    processor_data_type*   argPtr = &argNumber; // ASK: cringe?
-    IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, &argPtr));
-    LOG_DEBUG_VARS(*argPtr);
-
-    Errors error = popElementToStack(&processor->stackOfVars, &argNumber);
-    LOG_DEBUG_VARS(argNumber);
-    *argPtr = argNumber;
-
-    LOG_DEBUG_VARS(processor->registers[3]);
-
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
+    IF_ERR_RETURN(pushOrPopProcessorStackCommonFunc(processor, false));
     return PROCESSOR_STATUS_OK;
 }
 
@@ -251,8 +211,9 @@ ProcessorErrors popFromProcessorStackFunc(Processor* processor) {
 ProcessorErrors haltCommandFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    LOG_DEBUG("halt");
-    // for loop will end, because conditions is not satisfied any longer
+    //LOG_DEBUG("HALT command");
+    LOG_FUNC_STARTED();
+    // for loop will end, because condition of loop is not satisfied any longer
     processor->instructionPointer = processor->numberOfInstructions;
 
     return PROCESSOR_STATUS_OK;
@@ -261,25 +222,20 @@ ProcessorErrors haltCommandFunc(Processor* processor) {
 static size_t getJumpInstructionPointer(Processor* processor) {
     assert(processor != NULL);
     size_t res = *((int*)(processor->programCode + processor->instructionPointer));
-    //processor->instructionPointer += sizeof(int);
-    LOG_DEBUG_VARS(res, processor->programCode[processor->instructionPointer],  processor->programCode[processor->instructionPointer + 1],  processor->programCode[processor->instructionPointer + 2]);
+    LOG_DEBUG_VARS(res, processor->programCode[processor->instructionPointer],
+        processor->programCode[processor->instructionPointer + 1],  processor->programCode[processor->instructionPointer + 2]);
     return res;
 }
 
 ProcessorErrors meowFunc(Processor* processor) {
-    processor_data_type number_1 = 0;
-    Errors error = popElementToStack(&processor->stackOfVars, &number_1);
-    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    processor_data_type number = 0;
+    POP_VAR(&number);
 
-    for (size_t i = 0; i < number_1; ++i) {
+    for (size_t i = 0; i < number; ++i) {
         printf("meow\n");
     }
-
     printf("end\n");
+
     return PROCESSOR_STATUS_OK;
 }
 
@@ -289,26 +245,14 @@ ProcessorErrors generalJmpCommandFunc(Processor* processor, jumpConditionFuncPtr
     if (comparator == NULL) { // that's jmp command, without any conditions
         // WARNING: endless loop can happen
         processor->instructionPointer = getJumpInstructionPointer(processor);
-        //++(processor->instructionPointer);
         return PROCESSOR_STATUS_OK;
     }
 
     processor_data_type number_1 = 0;
     processor_data_type number_2 = 0;
-    // TODO: define for checking error from separate lib or function
     LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    Errors error = popElementToStack(&processor->stackOfVars, &number_2);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
-    error = popElementToStack(&processor->stackOfVars, &number_1);
-    //LOG_DEBUG_VARS(processor->stackOfVars.numberOfElements);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    POP_VAR(&number_2);
+    POP_VAR(&number_1);
 
     processor_data_type operationResult = (*comparator)(number_1, number_2);
     LOG_DEBUG_VARS(number_1, number_2, operationResult);
@@ -339,12 +283,7 @@ ProcessorErrors procCommandCallFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     size_t tmp = processor->instructionPointer + sizeof(int); // tmp var, just in case
-    Errors error = pushElementToStack(&processor->stackOfCalls, &tmp);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
+    PUSH_CALL(&tmp);
     LOG_DEBUG_VARS("call function", processor->instructionPointer);
     IF_ERR_RETURN(procCommandJumpAnyway(processor));
 
@@ -355,11 +294,9 @@ ProcessorErrors procCommandReturnFromFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
     size_t tmp = 0; // tmp var, just in case
-    Errors error = popElementToStack(&processor->stackOfCalls, &tmp);
+    POP_CALL(&tmp);
     LOG_DEBUG_VARS("return", processor->instructionPointer, tmp);
-    //IF_ERR_RETURN(procCommandJumpAnyway(processor));
-
-    processor->instructionPointer = tmp; // ASK: is it copypaste, because I already have jumpAnyway function
+    processor->instructionPointer = tmp;
 
     return PROCESSOR_STATUS_OK;
 }
@@ -367,11 +304,7 @@ ProcessorErrors procCommandReturnFromFunc(Processor* processor) {
 ProcessorErrors procCommandDrawFunc(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    RamStructErrors error = drawRamMemory(&processor->ram);
-    if (error != RAM_STATUS_OK) {
-        LOG_ERROR(getRamErrorMessage(error));
-        return PROCESSOR_ERROR_RAM_ERROR;
-    }
+    RAM_MODULE_ERR_CHECK(drawRamMemory(&processor->ram));
 
     return PROCESSOR_STATUS_OK;
 }
@@ -388,13 +321,7 @@ ProcessorErrors procCommandInFromTerminal(Processor* processor) {
         scanf("%Lg", &number);
     }
 
-    Errors error = pushElementToStack(&processor->stackOfVars, &number);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    PUSH_VAR(&number);
 
     return PROCESSOR_STATUS_OK;
 }
-
-// FIXME: move to processor folder

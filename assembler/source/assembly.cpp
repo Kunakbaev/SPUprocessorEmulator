@@ -17,6 +17,13 @@
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getAssemblerErrorMessage)
 
+#define TABLE_OF_LABELS_ERR_CHECK(error)                                            \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getTableOfLabelsErrorMessage,             \
+        TABLE_OF_LABELS_ERROR_STATUS_OK, ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR)
+
+#define COMMANDS_ERR_CHECK(error)                                            \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getCommandsErrorMessage,             \
+        COMMANDS_STATUS_OK, ASSEMBLER_ERROR_COMMANDS_ERROR)
 
 
 
@@ -50,17 +57,8 @@ AssemblerErrors constructAssembler(Assembler* assembler,
     IF_NOT_COND_RETURN(assembler->programCode != NULL,
                        ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR);
 
-    TableOfLabelsErrors error = constructTableOfLabels();
-    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(error));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
-
-    CommandErrors error2 = validateCommands();
-    if (error2 != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(error2));
-        return ASSEMBLER_ERROR_COMMAND_ERROR;
-    }
+    TABLE_OF_LABELS_ERR_CHECK(constructTableOfLabels());
+    COMMANDS_ERR_CHECK(validateCommands());
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -102,17 +100,13 @@ static AssemblerErrors clearCodeAfterComment(char* line) {
 }
 
 // depending on what was in arg string, saves found int to either numArg or regArg
-static AssemblerErrors argsToNumber(const char* arg, int* numArg, int* regArg, int* mask) {
+static AssemblerErrors argsToNumber(const char* arg, processor_data_type* numArg, int* regArg, int* mask) {
     IF_ARG_NULL_RETURN(arg);
     IF_ARG_NULL_RETURN(mask);
 
     // checking if arg is register name
     int tmpNum = -1;
-    CommandErrors error = findRegName(arg, &tmpNum);
-    if (error != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(error));
-        return ASSEMBLER_ERROR_COMMAND_ERROR;
-    }
+    COMMANDS_ERR_CHECK(findRegName(arg, &tmpNum));
 
     LOG_DEBUG_VARS(arg, *regArg);
     if (tmpNum != -1) {
@@ -120,8 +114,9 @@ static AssemblerErrors argsToNumber(const char* arg, int* numArg, int* regArg, i
         *regArg = tmpNum;
     } else {
         *mask  |= HAS_NUM_ARG; // this is const number
-        // TODO: what to do with long double?
-        *numArg = atoi(arg); // FIXME: strtol
+        errno = 0;
+        *numArg = strtold(arg, NULL);
+        IF_NOT_COND_RETURN(errno == 0, ASSEMBLER_ERROR_STRTOLD_ERROR);
     }
 
     return ASSEMBLER_STATUS_OK;
@@ -145,7 +140,7 @@ static void tryRamArg(char** arg, int* mask) {
 }
 
 // if returns true, than 2 args were successfully found, otherwise returns false
-static bool trySumOfArgs(char* arg, int* mask, int* numArg, int* regArg) {
+static bool trySumOfArgs(char* arg, int* mask, processor_data_type* numArg, int* regArg) {
     assert(arg    != NULL);
     assert(numArg != NULL);
     assert(regArg != NULL);
@@ -163,7 +158,7 @@ static bool trySumOfArgs(char* arg, int* mask, int* numArg, int* regArg) {
     return true;
 }
 
-static AssemblerErrors getArgumentMask(char* arg, int* mask, int* numArg, int* regArg) {
+static AssemblerErrors getArgumentMask(char* arg, int* mask, processor_data_type* numArg, int* regArg) {
     IF_ARG_NULL_RETURN(arg);
 
     tryRamArg(&arg, mask);
@@ -238,11 +233,7 @@ static AssemblerErrors getCommandIndex(const char* lineOfCode, int* commandIndex
     IF_ARG_NULL_RETURN(commandIndex);
 
     CommandStruct command = {};
-    CommandErrors error = getCommandByName(lineOfCode, &command);
-    if (error != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(error));
-        return ASSEMBLER_ERROR_COMMAND_ERROR;
-    }
+    COMMANDS_ERR_CHECK(getCommandByName(lineOfCode, &command));
 
     *commandIndex = command.commandIndex;
 
@@ -266,11 +257,7 @@ static AssemblerErrors tryLabel(Assembler* assembler, char* line, bool* is) {
     //*ptr = '\0';
     Label label = {line, assembler->numOfBytesInDest};
 
-    TableOfLabelsErrors error = addLabelName(&label);
-    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(error));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
+    TABLE_OF_LABELS_ERR_CHECK(addLabelName(&label));
 
     // LOG_DEBUG_VARS(label.codeLineInd, label.labelName);
     //*ptr = ':';
@@ -283,16 +270,9 @@ static AssemblerErrors saveLabelCode(Assembler* assembler, const char* arg) {
     IF_ARG_NULL_RETURN(arg);
 
     Label label = {};
-    TableOfLabelsErrors err = getNumOfCodeLineByLabel(arg, &label);
+    TABLE_OF_LABELS_ERR_CHECK(getNumOfCodeLineByLabel(arg, &label));
     LOG_DEBUG_VARS(arg, label.codeLineInd, label.labelName);
-    if (err != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(err));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
 
-    // LOG_DEBUG_VARS(lineOfCode, argPtr, label.codeLineInd);
-    //IF_ERR_RETURN(addByteToProgramCodeArray(assembler, label.codeLineInd));
-    //addNumBytes(assembler, label.codeLineInd);
     saveBytesToArray(assembler, (const uint8_t*)&label.codeLineInd, 4);
 
     return ASSEMBLER_STATUS_OK;
@@ -305,23 +285,15 @@ static AssemblerErrors tryJumpCommand(Assembler* assembler, char* lineOfCode, ch
     IF_ARG_NULL_RETURN(is);
 
     *is = false;
-    CommandErrors error = isJumpCommand(lineOfCode, is);
+    COMMANDS_ERR_CHECK(isJumpCommand(lineOfCode, is));
     LOG_DEBUG_VARS("isJumpCommand", *is);
-    if (error != COMMANDS_STATUS_OK) {
-        LOG_ERROR(getCommandsErrorMessage(error));
-        return ASSEMBLER_ERROR_COMMAND_ERROR;
-    }
     if (!*is)
         return ASSEMBLER_STATUS_OK;
 
     LOG_DEBUG_VARS(lineOfCode, argPtr);
 
     Label label = {argPtr, -1};
-    TableOfLabelsErrors error2 = addLabelName(&label);
-    if (error2 != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(error2));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
+    TABLE_OF_LABELS_ERR_CHECK(addLabelName(&label));
 
     IF_ERR_RETURN(saveLabelCode(assembler, argPtr));
     *is = true;
@@ -355,15 +327,10 @@ static AssemblerErrors removeAllSpaceFromArgument(char* arg) {
 // string is char*, however we don't wanna change it, so before return, we have to roll back to inital state
 static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     // we have 2 passes when we look at the code lines, so we don't wanna change them
-    // FIXME: calloc каждый раз - кринж!
-    // 1) Всё таки менять строки
-    // 2) Хотя бы делать calloc один раз
-
     IF_ARG_NULL_RETURN(lineOfCode);
 
     bool success = false;
     IF_ERR_RETURN(tryLabel(assembler, lineOfCode, &success));
-    //LOG_DEBUG_VARS(lineOfCode, is);
     if (success) {
         return ASSEMBLER_STATUS_OK;
     }
@@ -374,7 +341,6 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     IF_ERR_RETURN(getCommandIndex(lineOfCode, &commandIndex));
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, commandIndex));
 
-    //LOG_DEBUG_VARS(lineOfCode, argPtr, commandIndex);
     if (argPtr == NULL)
         return ASSEMBLER_STATUS_OK;
 
@@ -382,10 +348,10 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
 
     success = false;
     IF_ERR_RETURN(tryJumpCommand(assembler, lineOfCode, argPtr, &success));
-    //LOG_DEBUG_VARS(is);
     if (success) {
         return ASSEMBLER_STATUS_OK;
     }
+
     /**
 
         CMD + ARGS
@@ -401,9 +367,9 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
                 label
      */
 
-    int mask   = 0;
-    int numArg = -1,
-        regArg = -1;
+    int mask                   = 0;
+    processor_data_type numArg = -1;
+    int regArg                 = -1;
 
     LOG_DEBUG_VARS(argPtr);
     IF_ERR_RETURN(getArgumentMask(argPtr, &mask, &numArg, &regArg));
@@ -426,7 +392,6 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     return ASSEMBLER_STATUS_OK;
 }
 
-//                     FIXME: getNLinesInFile
 static AssemblerErrors getNumOfLinesInFile(FILE* source, size_t* numOfLines) {
     IF_ARG_NULL_RETURN(source);
     IF_ARG_NULL_RETURN(numOfLines);
@@ -447,7 +412,7 @@ static AssemblerErrors prepareString(char** line) {
 
     IF_ERR_RETURN(clearCodeAfterComment(*line));
     size_t lineOfCodeLen = strlen(*line);
-    (*line)[lineOfCodeLen - 1] = '\0'; // remove \n
+    (*line)[lineOfCodeLen - 1] = '\0'; // removing \n
     --lineOfCodeLen;
     char* endPtr = *line + lineOfCodeLen - 1;
 
@@ -461,7 +426,6 @@ static AssemblerErrors prepareString(char** line) {
     char* ptr = *line;
     while (*ptr != '\0' && isDelim(*ptr)) {
         ++ptr;
-        //LOG_DEBUG_VARS(ptr);
     }
     *line = ptr;
 
@@ -470,7 +434,6 @@ static AssemblerErrors prepareString(char** line) {
     return ASSEMBLER_STATUS_OK;
 }
 
-// TODO: написать комментарий: почему так а не 2 функции
 static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
@@ -488,7 +451,6 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
 
     size_t lineInd = 0;
     while (fgets(fileLineBuffer, FILE_LINE_BUFFER_SIZE, source)) {
-        // LOG_DEBUG_VARS(fileLineBuffer);
         size_t lineOfCodeLen = strlen(fileLineBuffer);
         assembler->lines[lineInd] = (char*)calloc(lineOfCodeLen + 1, sizeof(char));
         IF_NOT_COND_RETURN(assembler->lines[lineInd] != NULL,
@@ -500,21 +462,16 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
         if (lineOfCodeLen == 0 || assembler->lines[lineInd] == NULL)
             continue;
 
-        //LOG_DEBUG_VARS(lineOfCodeLen, fileLineBuffer);
         ++lineInd;
     }
     assembler->numOfLines = lineInd;
 
-    // BRUH:
     // source file is no longer useful
     fclose(source);
-    //LOG_DEBUG_VARS(assembler->numOfLines, assembler->lines[0], assembler->lines[1]);
 
     for (size_t i = 0; i < assembler->numOfLines; ++i) {
         LOG_DEBUG_VARS(i, assembler->lines[i]);
     }
-
-    //exit(0);
 
     return ASSEMBLER_STATUS_OK;
 }
@@ -522,7 +479,7 @@ static AssemblerErrors readLinesFromFileAndRemoveComments(Assembler* assembler) 
 AssemblerErrors processCodeLines(Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
-    assembler->numOfBytesInDest   = 0;
+    assembler->numOfBytesInDest = 0;
     for (size_t lineInd = 0; lineInd < assembler->numOfLines; ++lineInd) {
         IF_ERR_RETURN(parseLineOfCode(assembler, assembler->lines[lineInd]));
     }
@@ -533,14 +490,10 @@ AssemblerErrors processCodeLines(Assembler* assembler) {
 AssemblerErrors saveProgramCodeToDestFile(const Assembler* assembler) {
     IF_ARG_NULL_RETURN(assembler);
 
-    printf("saving to dest file\n");
+    printf("saving program code to binary dest file\n");
     printAllLabels();
 
-    TableOfLabelsErrors error = checkAllLabelsAreDeclared();
-    if (error != TABLE_OF_LABELS_ERROR_STATUS_OK) {
-        LOG_ERROR(getTableOfLabelsErrorMessage(error));
-        return ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR;
-    }
+    TABLE_OF_LABELS_ERR_CHECK(checkAllLabelsAreDeclared());
 
     FILE* destFile = fopen(assembler->destFileName, "wb");
     IF_NOT_COND_RETURN(destFile != NULL,

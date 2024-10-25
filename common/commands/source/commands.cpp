@@ -14,6 +14,21 @@
 
 #define IF_NOT_COND_RETURN(condition, error) \
     COMMON_IF_NOT_COND_RETURN(condition, error, getCommandsErrorMessage)
+//
+// #define GET_COMMAND_HASH(name) \
+//     do {                        \
+//         uint64_t heh = #name;                                \
+//
+//     } while (0)
+
+/*
+
+ASK:
+will hash work properly? For same strings as an argument produce same hashes
+
+*/
+
+#define GET_COMMAND_HASH(name) ((uint64_t)(&(#name)))
 
 constexpr CommandStruct COMMANDS[] = {
     {1,  "push"},
@@ -53,6 +68,7 @@ const size_t NUM_OF_REGS          = sizeof(registerNames) / sizeof(*registerName
 
 // checks that command index - 1 (one indexation to reduce errors) is equal to array index
 CommandErrors validateCommands() {
+
     for (size_t commandInd = 0; commandInd < NUM_OF_COMMANDS; ++commandInd) {
         if (COMMANDS[commandInd].commandIndex - 1 != commandInd) {
             return COMMANDS_ERROR_BAD_COMMAND_INDEX_FORMAT;
@@ -102,6 +118,7 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
     result->commandName = "?"; // in case if not found
     for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
         // FIXME: too slow
+        // TODO: read about strecmp
         // can write hash function check for this
         LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
         if (strcmp(commandName, COMMANDS[commandIndex].commandName) == 0) {

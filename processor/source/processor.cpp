@@ -19,6 +19,15 @@
     COMMON_IF_NOT_COND_RETURN(condition, error, getProcessorErrorMessage)
 
 
+#define STACK_LIB_ERR_CHECK(error)                                            \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getErrorMessage,             \
+        STATUS_OK, PROCESSOR_ERROR_STACK_ERROR)
+
+#define COMMANDS_ERR_CHECK(error)                                            \
+    COMMON_IF_SUBMODULE_ERR_RETURN(error, getCommandsErrorMessage,             \
+        COMMANDS_STATUS_OK, PROCESSOR_ERROR_COMMANDS_ERROR)
+
+
 
 
 const size_t MAX_PROGRAM_CODE_SIZE = 1 << 10;
@@ -67,14 +76,11 @@ const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof
 //            first->commandName  == second->commandName;
 // }
 
+// called in constructor, checks that 2 arrays of same commands match
 static ProcessorErrors checkThat2CommandsArraysMatch() {
     for (size_t commandInd = 0; commandInd < PROCESSOR_COMMANDS_ARR_SIZE; ++commandInd) {
         CommandStruct command = {};
-        CommandErrors error = getCommandByIndex(commandInd + 1, &command);
-        if (error != COMMANDS_STATUS_OK) {
-            LOG_ERROR(getCommandsErrorMessage(error));
-            return PROCESSOR_ERROR_COMMANDS_ERROR;
-        }
+        COMMANDS_ERR_CHECK(getCommandByIndex(commandInd + 1, &command));
 
         if (strcmp(command.commandName, processorCommandsArr[commandInd].commandName) != 0) {
             return PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON;
@@ -89,8 +95,7 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
 
     IF_ERR_RETURN(checkThat2CommandsArraysMatch());
 
-    *processor = {}; // name constants ~~~~~|
-    // FIXME: const int initialCapacity = 8;
+    *processor = {};
     const int initialCapacity = 8;
     Errors error = constructStack(&processor->stackOfVars, initialCapacity, PROCESSOR_DATA_TYPE_SIZE);
     if (error != STATUS_OK) {
@@ -109,7 +114,8 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     processor->numberOfInstructions = 0;
     processor->programCode          = NULL;
 
-    processor->registers = (processor_data_type*)calloc(NUM_OF_REGISTERS, sizeof(processor_data_type));
+    // +1 because we have 1 indexation
+    processor->registers = (processor_data_type*)calloc(NUM_OF_REGISTERS + 1, sizeof(processor_data_type));
     IF_NOT_COND_RETURN(processor->registers != NULL,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR);
 
@@ -117,10 +123,17 @@ ProcessorErrors ProcessorConstructor(Processor* processor) {
     fileLineBuffer = (char*)calloc(FILE_LINE_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(fileLineBuffer != NULL,
                        PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR); // free()
+    if (fileLineBuffer == NULL) {
+        LOG_ERROR(getProcessorErrorMessage(PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR));
+        FREE(processor->registers);
+        return PROCESSOR_ERROR_MEMORY_ALLOCATION_ERROR;
+    }
 
     RamStructErrors err = pleaseGiveMeRAM(&processor->ram);
     if (err != RAM_STATUS_OK) {
         LOG_ERROR(getRamErrorMessage(err)); // free() free()
+        FREE(processor->registers);
+        FREE(fileLineBuffer);
         return PROCESSOR_ERROR_RAM_ERROR;
     }
 
@@ -178,22 +191,12 @@ ProcessorErrors readProgramBinary(Processor* processor, const char* binFileName)
 
 static ProcessorErrors checkProcessorCommands(Processor* processor, size_t commandIndex) {
     IF_ARG_NULL_RETURN(processor);
-    //IF_ARG_NULL_RETURN(commandName);
-    IF_NOT_COND_RETURN(commandIndex < PROCESSOR_COMMANDS_ARR_SIZE,
+    // TODO: fill zero element with some junk
+    IF_NOT_COND_RETURN(1 <= commandIndex && commandIndex - 1 < PROCESSOR_COMMANDS_ARR_SIZE,
                        PROCESSOR_ERROR_INVALID_ARGUMENT);
 
     ProcessorErrors error = (*processorCommandsArr[commandIndex - 1].funcPtr)(processor);
     IF_ERR_RETURN(error);
-
-//     for (size_t commandIndex = 0; commandIndex < PROCESSOR_COMMANDS_ARR_SIZE; ++commandIndex) {
-//         if (myStrcmp(processorCommandsArr[commandIndex].commandName, commandName) != 0)
-//             continue;
-//
-//         LOG_DEBUG("----------------------------");
-//         LOG_DEBUG_VARS(commandName, commandIndex);
-        // ProcessorErrors error = (*processorCommandsArr[commandIndex].funcPtr)(processor);
-        // IF_ERR_RETURN(error);
-//     }
 
     return PROCESSOR_STATUS_OK;
 }
@@ -209,13 +212,8 @@ ProcessorErrors runProgramBinary(Processor* processor) {
         LOG_DEBUG_VARS(processor->instructionPointer, commandIndex);
 
         CommandStruct command = {};
-        CommandErrors error = getCommandByIndex(commandIndex, &command);
+        COMMANDS_ERR_CHECK(getCommandByIndex(commandIndex, &command));
         LOG_DEBUG_VARS(command.commandIndex, command.commandName);
-        if (error != COMMANDS_STATUS_OK) {
-            // FIXME: probably overload happens and that's not function that we are looking for
-            LOG_ERROR(getCommandsErrorMessage(error));
-            return PROCESSOR_ERROR_COMMANDS_ERROR;
-        }
 
         IF_ERR_RETURN(checkProcessorCommands(processor, command.commandIndex));
 
@@ -228,21 +226,11 @@ ProcessorErrors runProgramBinary(Processor* processor) {
 ProcessorErrors ProcessorDestructor(Processor* processor) {
     IF_ARG_NULL_RETURN(processor);
 
-    Errors error = destructStack(&processor->stackOfVars);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
-
-    error = destructStack(&processor->stackOfCalls);
-    if (error != STATUS_OK) {
-        LOG_ERROR(getErrorMessage(error));
-        return PROCESSOR_ERROR_STACK_ERROR;
-    }
+    STACK_LIB_ERR_CHECK(destructStack(&processor->stackOfVars));
+    STACK_LIB_ERR_CHECK(destructStack(&processor->stackOfCalls));
 
     FREE(processor->programCode);
-    processor = {}; // ASK: is this ok?
-
+    processor = {};
     FREE(fileLineBuffer);
 
     return PROCESSOR_STATUS_OK;

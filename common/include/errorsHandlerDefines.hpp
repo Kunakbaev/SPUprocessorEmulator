@@ -41,3 +41,13 @@
     } while (0)
 
 #endif
+
+#define COMMON_IF_SUBMODULE_ERR_RETURN(errorTmp, getErrorMessageFunc, OK_STATUS, returnError)                                        \
+    do {                                                            \
+        auto bruh = errorTmp;                                           \
+        if (bruh != OK_STATUS) {                                   \
+            LOG_ERROR(getErrorMessageFunc(bruh));                  \
+            assert(bruh != OK_STATUS);                             \
+            return returnError;                                           \
+        }                                                           \
+    } while(0)

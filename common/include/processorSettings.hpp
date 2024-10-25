@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <cstddef>
 
+// WARNING: CANNOT be changed so easily, some prints and scanfs need to be changed
 typedef long double processor_data_type;
 
 const int NUM_OF_REGISTERS         = 4;
@@ -15,8 +16,8 @@ const int PROCESSOR_DATA_TYPE_SIZE = sizeof(processor_data_type);
 
 enum PushCmdArgs {
     HAS_NUM_ARG = 1,
-    HAS_REG_ARG   = 2,
-    HAS_RAM_ARG   = 4,
+    HAS_REG_ARG = 2,
+    HAS_RAM_ARG = 4,
 };
 
 enum RegisterNames {

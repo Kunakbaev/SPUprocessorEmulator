@@ -10,9 +10,10 @@ enum AssemblerErrors {
     ASSEMBLER_ERROR_MEMORY_ALLOCATION_ERROR               = 2,                  // usually when memory allocation by calloc fails
     ASSEMBLER_ERROR_MEMORY_REALLOCATION_ERROR             = 3,                  // couldn't reallocate memory
     ASSEMBLER_ERROR_COULDNT_OPEN_FILE                     = 4,
-    ASSEMBLER_ERROR_COMMAND_ERROR                         = 5,
+    ASSEMBLER_ERROR_COMMANDS_ERROR                        = 5,
     ASSEMBLER_ERROR_FILE_STAT_ERROR                       = 6,
     ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR                 = 7,
+    ASSEMBLER_ERROR_STRTOLD_ERROR                         = 8,
 };
 
 const char* getAssemblerErrorMessage(AssemblerErrors error);
