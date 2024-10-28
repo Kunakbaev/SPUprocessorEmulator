@@ -35,6 +35,8 @@ const size_t FILE_LINE_BUFFER_SIZE = 1 << 10;
 
 char* fileLineBuffer;
 
+// can be put to common
+
 typedef ProcessorErrors (normalCommandFuncPtr)(Processor* processor);
 
 struct ProcessorCommandsStruct {
@@ -42,49 +44,49 @@ struct ProcessorCommandsStruct {
     normalCommandFuncPtr* funcPtr;
 };
 
+#define CMD(commandIndex, commandName, possibleArgsMask, funcPtr) \
+    {commandName, funcPtr},
+
 ProcessorCommandsStruct processorCommandsArr[] = {
-    {"push", pushToProcessorStackFunc},
-    {"add",  add2numsFunc},
-    {"sub",  sub2numsFunc},
-    {"mul",  mul2numsFunc},
-    {"div",  div2numsFunc},
-    {"out",  popAndPrintLastVarInStackFunc},
-    {"halt", haltCommandFunc},
-    {"pop",  popFromProcessorStackFunc},
-    {"pick", lookLastVarInVarStackFunc},
-    {"jmp",  procCommandJumpAnyway},
-    {"jb",   procCommandJumpIfBelow},
-    {"ja",   procCommandJumpIfMore},
-    {"je",   procCommandJumpIfEqual},
-    {"call", procCommandCallFunc},
-    {"ret",  procCommandReturnFromFunc},
-    {"draw", procCommandDrawFunc},
-    {"in",   procCommandInFromTerminal},
-    {"mod",  mod2numsFunc},
-    {"sqrt", sqrt1numFunc},
-    {"meow", meowFunc},
+    #include "../../common/commands/include/commandsRealization.in"
+
+    // {"push", pushToProcessorStackFunc},
+    // {"add",  add2numsFunc},
+    // {"sub",  sub2numsFunc},
+    // {"mul",  mul2numsFunc},
+    // {"div",  div2numsFunc},
+    // {"out",  popAndPrintLastVarInStackFunc},
+    // {"halt", haltCommandFunc},
+    // {"pop",  popFromProcessorStackFunc},
+    // {"pick", lookLastVarInVarStackFunc},
+    // {"jmp",  procCommandJumpAnyway},
+    // {"jb",   procCommandJumpIfBelow},
+    // {"ja",   procCommandJumpIfMore},
+    // {"je",   procCommandJumpIfEqual},
+    // {"call", procCommandCallFunc},
+    // {"ret",  procCommandReturnFromFunc},
+    // {"draw", procCommandDrawFunc},
+    // {"in",   procCommandInFromTerminal},
+    // {"mod",  mod2numsFunc},
+    // {"sqrt", sqrt1numFunc},
+    // {"meow", meowFunc},
 };
 
-const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
+#undef CMD
 
-// static bool areCommandStructsEqual(const CommandStruct* first,
-//                                    const CommandStruct* second) {
-//     assert(first  != NULL);
-//     assert(second != NULL);
-//
-//     return first->commandIndex == second->commandIndex &&
-//            first->commandName  == second->commandName;
-// }
+const size_t PROCESSOR_COMMANDS_ARR_SIZE = sizeof(processorCommandsArr) / sizeof(*processorCommandsArr);
 
 // called in constructor, checks that 2 arrays of same commands match
 static ProcessorErrors checkThat2CommandsArraysMatch() {
     for (size_t commandInd = 0; commandInd < PROCESSOR_COMMANDS_ARR_SIZE; ++commandInd) {
         CommandStruct command = {};
+        LOG_DEBUG_VARS(commandInd, processorCommandsArr[commandInd].commandName);
         COMMANDS_ERR_CHECK(getCommandByIndex(commandInd + 1, &command));
+        LOG_DEBUG_VARS(command.commandName);
 
-        if (strcmp(command.commandName, processorCommandsArr[commandInd].commandName) != 0) {
-            return PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON;
-        }
+        IF_NOT_COND_RETURN(strcmp(command.commandName,
+                           processorCommandsArr[commandInd].commandName) == 0,
+                           PROCESSOR_ERROR_COMMAND_ARRAY_IS_NOT_EQ_TO_COMMON);
     }
 
     return PROCESSOR_STATUS_OK;
@@ -214,9 +216,7 @@ ProcessorErrors runProgramBinary(Processor* processor) {
         CommandStruct command = {};
         COMMANDS_ERR_CHECK(getCommandByIndex(commandIndex, &command));
         LOG_DEBUG_VARS(command.commandIndex, command.commandName);
-
         IF_ERR_RETURN(checkProcessorCommands(processor, command.commandIndex));
-
         LOG_DEBUG_VARS(processor->instructionPointer, processor->numberOfInstructions);
     }
 

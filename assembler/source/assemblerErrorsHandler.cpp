@@ -21,6 +21,12 @@ const char* getAssemblerErrorMessage(AssemblerErrors error) {
             return "Assembler error: error occured in table of labels sublib.\n";
         case ASSEMBLER_ERROR_STRTOLD_ERROR:
             return "Assembler error: error occured during parse of number from text file.\n";
+        case ASSEMBLER_ERROR_BAD_FSAT_STATUS:
+            return "Assembler error: error couln't get file size, fstat bad status.\n";
+        case ASSEBMLER_ERROR_FILE_IS_TOO_BIG:
+            return "Assembler error: file is too big.\n";
+        case ASSEMBLER_ERROR_BAD_ARGS_FOR_COMMAND:
+            return "Assembler error: bad set of arguments provided to the command.\n";
 
         default:
             return "Unknown error.\n";

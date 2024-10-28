@@ -30,32 +30,18 @@ will hash work properly? For same strings as an argument produce same hashes
 
 #define GET_COMMAND_HASH(name) ((uint64_t)(&(#name)))
 
+#define CMD(commandIndex, commandName, possibleArgsMask, funcPtr) \
+    {commandIndex, commandName, possibleArgsMask},
+
 constexpr CommandStruct COMMANDS[] = {
-    {1,  "push"},
-    {2,  "add"},
-    {3,  "sub"},
-    {4,  "mul"},
-    {5,  "div"},
-    {6,  "out"},    // pop last num from stack and than outputs it
-    {7,  "halt"},   // ends program
-    {8,  "pop"},    // pop last value from stack to given register
-    {9,  "pick"},
-    {10, "jmp"},
-    {11, "jb"},
-    {12, "ja"},
-    {13, "je"},
-    {14, "call"},
-    {15, "ret"},
-    {16, "draw"},
-    {17, "in"},
-    {18, "mod"},
-    {19, "sqrt"},
-    {20, "meow"},
+    #include "../include/commandsRealization.in"
 };
+
+#undef CMD
 
 // WARNING: be carefull that jump commands in this array and in COMMANDS array are same
 constexpr const char* JUMP_COMMANDS[] = {
-    "jmp", "jb", "ja", "je", "call" // ASK: is this ok?
+    "jmp", "jb", "ja", "je", "call"
 };
 
 const size_t NUM_OF_COMMANDS      = sizeof(COMMANDS) / sizeof(*COMMANDS);
@@ -64,7 +50,7 @@ const size_t NUM_OF_JUMP_COMMANDS = sizeof(JUMP_COMMANDS) / sizeof(*JUMP_COMMAND
 // registers are numberated in one indexation, so first register name is undefined
 const char* registerNames[] = { "?", "AX", "BX", "CX", "DX" };
 
-const size_t NUM_OF_REGS          = sizeof(registerNames) / sizeof(*registerNames) - 1;
+const size_t NUM_OF_REGS = sizeof(registerNames) / sizeof(*registerNames) - 1;
 
 // checks that command index - 1 (one indexation to reduce errors) is equal to array index
 CommandErrors validateCommands() {
@@ -110,6 +96,16 @@ CommandErrors isJumpCommand(const char* commandName, bool* is) {
     return COMMANDS_STATUS_OK;
 }
 
+CommandErrors checkIfGoodArgMaskForCommand(size_t commandIndex, int mask, bool* is) {
+    IF_NOT_COND_RETURN(commandIndex < NUM_OF_COMMANDS,
+                       COMMANDS_ERROR_INVALID_ARGUMENT);
+    IF_NOT_COND_RETURN(mask < 8, COMMANDS_ERROR_INVALID_ARGUMENT);
+    IF_ARG_NULL_RETURN(is);
+
+    *is = (COMMANDS[commandIndex].possibleArgsMask >> mask) & 1;
+    return COMMANDS_STATUS_OK;
+}
+
 CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
     IF_ARG_NULL_RETURN(result);
     IF_ARG_NULL_RETURN(commandName);
@@ -120,7 +116,7 @@ CommandErrors getCommandByName(const char* commandName, CommandStruct* result) {
         // FIXME: too slow
         // TODO: read about strecmp
         // can write hash function check for this
-        LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
+        // LOG_DEBUG_VARS(commandIndex, commandName, COMMANDS[commandIndex].commandName);
         if (strcmp(commandName, COMMANDS[commandIndex].commandName) == 0) {
             *result = COMMANDS[commandIndex];
             return COMMANDS_STATUS_OK;

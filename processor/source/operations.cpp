@@ -32,7 +32,6 @@ processor_data_type mod2nums(processor_data_type a, processor_data_type b) {
         return 0;
     }
 
-    // FIXME: what to do with this?
     return (int)a % (int)b;
 }
 

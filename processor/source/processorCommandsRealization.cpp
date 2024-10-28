@@ -41,6 +41,12 @@
 // pushes to stack of calls given variable, can return error
 #define PUSH_CALL(element)     PUSH(stackOfCalls, element)
 
+// WARNING:
+// be carefull, simple text is pasted instead of define. Creates var argPtr in which stores pointer to argument for command (either number, register or memory cell)
+#define GET_ARG_PTR()                                           \
+    processor_data_type* argPtr = NULL;                         \
+    IF_ERR_RETURN(getArgPtrForCommand(processor, &argPtr));     \
+
 static ProcessorErrors popPrintLastVarFromVarStackAndReturnIt(Processor* processor,
                                                               processor_data_type* number) {
     IF_ARG_NULL_RETURN(processor);
@@ -132,12 +138,54 @@ ProcessorErrors executeOperationWith1Arg(Processor* processor,
 
 PROCESSOR_COMMAND_FUNC_WITH_1_ARG(sqrt1numFunc, sqrt1num);
 
-static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, processor_data_type** arg) {
+static ProcessorErrors checkNumArg(uint8_t* code, size_t* instructionPointer, processor_data_type** arg) {
+    IF_ARG_NULL_RETURN(code);
+    IF_ARG_NULL_RETURN(instructionPointer);
+    IF_ARG_NULL_RETURN(arg);
+
+    *arg = (processor_data_type*)(code + (*instructionPointer));
+    (*instructionPointer) += sizeof(processor_data_type);
+
+    return PROCESSOR_STATUS_OK;
+}
+
+static ProcessorErrors checkRegArg(int mask, Processor* processor,
+                                   processor_data_type** arg, processor_data_type* result) {
+    IF_ARG_NULL_RETURN(arg);
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(result);
+
+    size_t* instructionPointer = &processor->instructionPointer;
+    processor_data_type* num = &processor->registers[processor->programCode[*instructionPointer]];
+    if (mask & HAS_NUM_ARG) {
+        *result = **arg + *num;
+        *arg    = result;
+    } else {
+        *arg    = num;
+    }
+    ++(*instructionPointer);
+
+    return PROCESSOR_STATUS_OK;
+}
+
+static ProcessorErrors checkRamArg(Processor* processor, processor_data_type** arg) {
+    IF_ARG_NULL_RETURN(processor);
+    IF_ARG_NULL_RETURN(arg);
+
+    // WARNING: bad cast, from processor data type to size_t
+    size_t memoryIndex = **arg;
+    LOG_DEBUG_VARS(memoryIndex, processor->ram.memory[memoryIndex]);
+    RAM_MODULE_ERR_CHECK(getRamVarByIndex(&processor->ram, memoryIndex, arg));
+
+    return PROCESSOR_STATUS_OK;
+}
+
+static ProcessorErrors getArgPtrForCommand(Processor* processor, processor_data_type** arg) {
     IF_ARG_NULL_RETURN(processor);
     IF_ARG_NULL_RETURN(processor->programCode);
     IF_ARG_NULL_RETURN(processor->registers);
     IF_ARG_NULL_RETURN(arg);
-    IF_ARG_NULL_RETURN(*arg);
+    //IF_ARG_NULL_RETURN(*arg);
 
     uint8_t* code              = processor->programCode;
     size_t* instructionPointer = &processor->instructionPointer;
@@ -147,27 +195,11 @@ static ProcessorErrors getArgsFromCodeForPushOrPop(Processor* processor, process
     int mask = code[*instructionPointer];
     ++(*instructionPointer);
     LOG_DEBUG_VARS(mask);
-    if (mask & HAS_NUM_ARG) {
-        *arg = (processor_data_type*)(code + (*instructionPointer));
-        (*instructionPointer) += sizeof(processor_data_type);
-    }
-    if (mask & HAS_REG_ARG) {
-        processor_data_type* num = &processor->registers[code[*instructionPointer]];
-        LOG_DEBUG_VARS(code[*instructionPointer], processor->registers[code[*instructionPointer]]);
-        if (mask & HAS_NUM_ARG) {
-            result = **arg + *num;
-            *arg   = &result;
-        } else {
-            *arg   = num;
-        }
-        ++(*instructionPointer);
-    }
-    if (mask & HAS_RAM_ARG) {
-        // WARNING: bad cast, from processor data type to size_t
-        size_t memoryIndex = **arg;
-        LOG_DEBUG_VARS(memoryIndex, processor->ram.memory[memoryIndex]);
-        RAM_MODULE_ERR_CHECK(getRamVarByIndex(&processor->ram, memoryIndex, arg));
-    }
+    // WARNING:
+    *arg = NULL;
+    if (mask & HAS_NUM_ARG) IF_ERR_RETURN(checkNumArg(code, instructionPointer, arg));
+    if (mask & HAS_REG_ARG) IF_ERR_RETURN(checkRegArg(mask, processor,          arg, &result));
+    if (mask & HAS_RAM_ARG) IF_ERR_RETURN(checkRamArg(      processor,          arg));
 
     return PROCESSOR_STATUS_OK;
 }
@@ -184,10 +216,7 @@ ProcessorErrors pushOrPopProcessorStackCommonFunc(Processor* processor, bool isP
     IF_NOT_COND_RETURN(processor->instructionPointer < processor->numberOfInstructions,
                        PROCESSOR_ERROR_BAD_INS_POINTER);
 
-    processor_data_type argNumber = 0;
-    processor_data_type*   argPtr = &argNumber;
-    IF_ERR_RETURN(getArgsFromCodeForPushOrPop(processor, &argPtr));
-    LOG_DEBUG_VARS(*argPtr);
+    GET_ARG_PTR();
 
     if (isPush)
         PUSH_VAR(argPtr);
@@ -229,7 +258,12 @@ static size_t getJumpInstructionPointer(Processor* processor) {
 
 ProcessorErrors meowFunc(Processor* processor) {
     processor_data_type number = 0;
-    POP_VAR(&number);
+
+    GET_ARG_PTR();
+    if (argPtr == NULL) // if no arguments were provided we try to get it from stack of vars
+        POP_VAR(&number);
+    else
+        number = *argPtr;
 
     for (size_t i = 0; i < number; ++i) {
         printf("meow\n");

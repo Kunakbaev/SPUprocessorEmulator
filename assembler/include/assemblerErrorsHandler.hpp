@@ -14,6 +14,9 @@ enum AssemblerErrors {
     ASSEMBLER_ERROR_FILE_STAT_ERROR                       = 6,
     ASSEMBLER_ERROR_TABLE_OF_LABELS_ERROR                 = 7,
     ASSEMBLER_ERROR_STRTOLD_ERROR                         = 8,
+    ASSEMBLER_ERROR_BAD_FSAT_STATUS                       = 9,
+    ASSEBMLER_ERROR_FILE_IS_TOO_BIG                       = 10,
+    ASSEMBLER_ERROR_BAD_ARGS_FOR_COMMAND                  = 11,
 };
 
 const char* getAssemblerErrorMessage(AssemblerErrors error);

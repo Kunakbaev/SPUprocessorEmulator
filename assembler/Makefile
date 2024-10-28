@@ -3,7 +3,7 @@ CFLAGS 		 := -D _DEBUG -lm -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggres
 LOGGER_FLAGS :=
 CFLAGS = -D _DEBUG
 # CFLAGS += -D NDEBUG
-# CFLAGS += -fsanitize=address
+CFLAGS += -fsanitize=address
 
 MY_LIB_NAME  := my_loglib
 
@@ -23,7 +23,8 @@ endif
 
 # -------------------------   LIB RUN   -----------------------------
 
-SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
+# SRC 	   				:= $(wildcard ./$(SOURCE_DIR)/*.cpp)
+SRC						:= ./$(SOURCE_DIR)/main.cpp ./$(SOURCE_DIR)/assemblerErrorsHandler.cpp ./$(SOURCE_DIR)/assembly.cpp ./$(SOURCE_DIR)/tableOfLabels.cpp
 OBJ 	   				:= $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(notdir ${SRC}))
 COMMON_OBJ				:= $(COMMANDS_BUILD_DIR)/commands.o $(COMMANDS_BUILD_DIR)/commandsErrorsHandler.o
 

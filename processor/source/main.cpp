@@ -20,7 +20,7 @@ int main() {
     // }
     // return 0;
 
-    // setLoggingLevel(DEBUG);
+    //setLoggingLevel(DEBUG);
     LOG_DEBUG("Compiling program (transfer between 'compiler' code and 'working program'!\n");
 
     Processor processor = {};
