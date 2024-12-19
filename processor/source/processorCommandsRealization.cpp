@@ -114,6 +114,11 @@ PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(sub2numsFunc, sub2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mul2numsFunc, mul2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(div2numsFunc, div2nums);
 PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(mod2numsFunc, mod2nums);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(lessCmpFunc,  lessCmp);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(lessOrEqCmpFunc,  lessOrEqCmp);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(greaterCmpFunc,  greaterCmp);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(greaterOrEqCmpFunc,  greaterOrEqCmp);
+PROCESSOR_COMMAND_FUNC_WITH_2_ARGS(isEqCmpFunc,  isEqCmp);
 
 ProcessorErrors executeOperationWith1Arg(Processor* processor,
                                          oneArgOperFuncPtr operation) {

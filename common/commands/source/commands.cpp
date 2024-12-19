@@ -44,7 +44,7 @@ constexpr const char* JUMP_COMMANDS[] = {
     "jmp", "jb", "ja", "je", "call"
 };
 
-const size_t NUM_OF_COMMANDS      = sizeof(COMMANDS) / sizeof(*COMMANDS);
+const size_t NUM_OF_COMMANDS      = sizeof(COMMANDS)      / sizeof(*COMMANDS);
 const size_t NUM_OF_JUMP_COMMANDS = sizeof(JUMP_COMMANDS) / sizeof(*JUMP_COMMANDS);
 
 // registers are numberated in one indexation, so first register name is undefined
@@ -54,7 +54,6 @@ const size_t NUM_OF_REGS = sizeof(registerNames) / sizeof(*registerNames) - 1;
 
 // checks that command index - 1 (one indexation to reduce errors) is equal to array index
 CommandErrors validateCommands() {
-
     for (size_t commandInd = 0; commandInd < NUM_OF_COMMANDS; ++commandInd) {
         if (COMMANDS[commandInd].commandIndex - 1 != commandInd) {
             return COMMANDS_ERROR_BAD_COMMAND_INDEX_FORMAT;
@@ -97,12 +96,13 @@ CommandErrors isJumpCommand(const char* commandName, bool* is) {
 }
 
 CommandErrors checkIfGoodArgMaskForCommand(size_t commandIndex, int mask, bool* is) {
-    IF_NOT_COND_RETURN(commandIndex < NUM_OF_COMMANDS,
+    IF_NOT_COND_RETURN(commandIndex - 1 < NUM_OF_COMMANDS,
                        COMMANDS_ERROR_INVALID_ARGUMENT);
     IF_NOT_COND_RETURN(mask < 8, COMMANDS_ERROR_INVALID_ARGUMENT);
     IF_ARG_NULL_RETURN(is);
 
-    *is = (COMMANDS[commandIndex].possibleArgsMask >> mask) & 1;
+    LOG_DEBUG_VARS(COMMANDS[commandIndex - 1].possibleArgsMask);
+    *is = (COMMANDS[commandIndex - 1].possibleArgsMask >> mask) & 1;
     return COMMANDS_STATUS_OK;
 }
 
@@ -133,16 +133,4 @@ CommandErrors getCommandByIndex(size_t index, CommandStruct* result) {
 
     *result = COMMANDS[index - 1];
     return COMMANDS_STATUS_OK;
-
-    // TODO: remove for
-    // result->commandName = "?"; // in case if not found
-    // for (size_t commandIndex = 0; commandIndex < NUM_OF_COMMANDS; ++commandIndex) {
-    //     // FIXME: too slow?
-    //     // can write hash function check for this
-    //     if (COMMANDS[commandIndex].commandIndex == index) {
-    //         *result = COMMANDS[commandIndex];
-    //         return COMMANDS_STATUS_OK;
-    //     }
-    // }
-    // return COMMANDS_ERROR_COMMAND_NOT_FOUND;
 }

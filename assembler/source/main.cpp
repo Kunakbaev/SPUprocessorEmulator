@@ -63,7 +63,7 @@ int main() {
     // ../program.asm
     // ../simpleAsmPrograms/recursiveFact.asm
     error = constructAssembler(&assembler,
-                               "../program.asm",
+                               "../../../CodeGenerator/dest.asm",
                                "../programBinCode.bin");
     IF_MAIN_ERR_RETURN(error);
 

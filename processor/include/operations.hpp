@@ -13,6 +13,11 @@ processor_data_type sub2nums(processor_data_type a, processor_data_type b);
 processor_data_type mul2nums(processor_data_type a, processor_data_type b);
 processor_data_type div2nums(processor_data_type a, processor_data_type b);
 processor_data_type mod2nums(processor_data_type a, processor_data_type b);
+processor_data_type lessCmp(processor_data_type a, processor_data_type b);
+processor_data_type lessOrEqCmp(processor_data_type a, processor_data_type b);
+processor_data_type greaterCmp(processor_data_type a, processor_data_type b);
+processor_data_type greaterOrEqCmp(processor_data_type a, processor_data_type b);
+processor_data_type isEqCmp(processor_data_type a, processor_data_type b);
 // WARNING: processor_data_type can be integer
 processor_data_type sinOperation(processor_data_type a);
 // WARNING: processor_data_type can be integer

@@ -63,4 +63,23 @@ bool jmpConditionMore(processor_data_type a, processor_data_type b) {
     return a > b;
 }
 
+long double lessCmp(processor_data_type a, processor_data_type b) {
+    return a < b;
+}
+
+long double lessOrEqCmp(processor_data_type a, processor_data_type b) {
+    return a <= b;
+}
+
+long double greaterCmp(processor_data_type a, processor_data_type b) {
+    return a > b;
+}
+
+long double greaterOrEqCmp(processor_data_type a, processor_data_type b) {
+    return a > b;
+}
+
+long double isEqCmp(processor_data_type a, processor_data_type b) {
+    return a == b;
+}
 

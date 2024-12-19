@@ -244,6 +244,8 @@ static AssemblerErrors removeAllSpaceFromArgument(char* arg) {
     return ASSEMBLER_STATUS_OK;
 }
 
+#include <cmath>
+
 static AssemblerErrors saveAndValidateCommandArgs(Assembler* assembler,
                                                   char* lineOfCode, char* argPtr,
                                                   int* mask) {
@@ -252,7 +254,7 @@ static AssemblerErrors saveAndValidateCommandArgs(Assembler* assembler,
     IF_ARG_NULL_RETURN(argPtr);
     IF_ARG_NULL_RETURN(mask);
 
-    processor_data_type numArg = -1;
+    processor_data_type numArg = NAN;
     int                 regArg = -1;
 
     LOG_DEBUG_VARS(argPtr);
@@ -261,7 +263,7 @@ static AssemblerErrors saveAndValidateCommandArgs(Assembler* assembler,
 
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, *mask));
     // WARNING: first we output const and then register
-    if (numArg  != -1) IF_ERR_RETURN(addNumBytes(              assembler, numArg));
+    if (numArg  != NAN) IF_ERR_RETURN(addNumBytes(              assembler, numArg));
     if (regArg != -1)  IF_ERR_RETURN(addByteToProgramCodeArray(assembler, regArg));
     *(argPtr - 1) = ' '; // returning string to initial state
 
@@ -299,6 +301,7 @@ static AssemblerErrors parseLineOfCode(Assembler* assembler, char* lineOfCode) {
     }
 
     success = false;
+    LOG_DEBUG_VARS(commandIndex, mask, lineOfCode, argPtr);
     COMMANDS_ERR_CHECK(checkIfGoodArgMaskForCommand(commandIndex, mask, &success));
     IF_NOT_COND_RETURN(success, ASSEMBLER_ERROR_BAD_ARGS_FOR_COMMAND);
 
