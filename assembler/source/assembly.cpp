@@ -263,8 +263,8 @@ static AssemblerErrors saveAndValidateCommandArgs(Assembler* assembler,
 
     IF_ERR_RETURN(addByteToProgramCodeArray(assembler, *mask));
     // WARNING: first we output const and then register
-    if (numArg  != NAN) IF_ERR_RETURN(addNumBytes(              assembler, numArg));
-    if (regArg != -1)  IF_ERR_RETURN(addByteToProgramCodeArray(assembler, regArg));
+    if (!isnanl(numArg)) IF_ERR_RETURN(addNumBytes(              assembler, numArg));
+    if (regArg != -1)    IF_ERR_RETURN(addByteToProgramCodeArray(assembler, regArg));
     *(argPtr - 1) = ' '; // returning string to initial state
 
     return ASSEMBLER_STATUS_OK;
